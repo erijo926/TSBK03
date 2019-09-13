@@ -122,7 +122,7 @@ Point3D cam, point;
 Model *cube;
 FBOstruct *fbo1, *fbo2;
 GLuint shader = 0;
-GLuint bumpTex;
+GLuint bumpTex, displayTex;
 unsigned int vsBuffer, vtBuffer; // Attribute buffers for Vs and Vt
 
 //-------------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ void init(void)
     shader = loadShaders("lab1-2.vert", "lab1-2.frag");
 
     // Load bump map (you are encouraged to try different ones)
-    LoadTGATextureSimple("bumpmaps/uppochner.tga", &bumpTex);
+    LoadTGATextureSimple("bumpmaps/maskros512.tga", &bumpTex);
 
 	// load the model
     cube = LoadModelPlus("cubeexp.obj");
@@ -185,7 +185,7 @@ void display(void)
     glUniformMatrix4fv(glGetUniformLocation(shader, "projMatrix"), 1, GL_TRUE, projectionMatrix.m);
     glUniformMatrix4fv(glGetUniformLocation(shader, "viewMatrix"), 1, GL_TRUE, viewMatrix.m);
     glUniform3fv(glGetUniformLocation(shader, "camPos"), 1, &cam.x);
-    glUniform1i(glGetUniformLocation(shader, "texUnit"), 0);
+    glUniform1i(glGetUniformLocation(shader, "bumpTex"), 0);
 
     DrawModel(cube, shader, "in_Position", "in_Normal", "in_TexCoord");
 
