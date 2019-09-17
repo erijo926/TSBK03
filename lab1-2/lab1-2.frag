@@ -28,9 +28,12 @@ void main(void)
     vec3 normal_prim = out_Normal + bs*Ps + bt*Pt;
     vec3 normal = normalize(normal_prim);
 
-    mat3 Mvt = transpose(mat3(Ps,Pt,out_Normal).T); //mat3 creates the matrix with the vectors as columns, whereas we want them as rows.
+    mat3 Mvt = transpose(mat3(Ps,Pt,normal)); //mat3 creates the matrix with the vectors as columns, whereas we want them as rows.
+    vec3 light_T = Mvt*light;
+
 	// Simplified lighting calculation.
 	// A full solution would include material, ambient, specular, light sources, multiply by texture.
-    out_Color = vec4( dot(normal, light)); // * texture(bumpTex, outTexCoord); //Only light to see the result better
+    // out_Color = vec4( dot(normal, light_T)); // * texture(bumpTex, outTexCoord); //Only light to see the result better
     //out_Color = vec4(bs,bt,0.0,1.0);
+    out_Color = vec4(light_T,1.0);
 }
