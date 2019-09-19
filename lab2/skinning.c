@@ -66,7 +66,8 @@ vec3 g_normalsRes[kMaxRow][kMaxCorners];
 // vertex attributes sent to OpenGL
 vec3 g_boneWeights[kMaxRow][kMaxCorners];
 
-float weight[kMaxRow] = {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+// float weight[kMaxRow] = {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+float weight[kMaxRow] = {0.0, 0.0, 0.1, 0.3, 0.5, 0.5, 0.7, 0.9, 1.0, 1.0};
 
 Model *cylinderModel; // Collects all the above for drawing with glDrawElements
 
@@ -217,7 +218,7 @@ void DeformCylinder()
 
             mat4 inv_bone1 = InvertMat4(Mbone1);
             mat4 inv_bone2 = InvertMat4(Mbone2);
-
+            /*
             if (weight[row] > 0.5)
             {
                 g_vertsRes[row][corner] = MultVec3(Mult(Tbone2, Mult(inv_bone2,inv_bone1)),g_vertsOrg[row][corner]);
@@ -225,7 +226,12 @@ void DeformCylinder()
             else {
                 g_vertsRes[row][corner] = g_vertsOrg[row][corner];
             }
+            */
+            vec3 vert_pos_bone1 = ScalarMult(MultVec3(Mult(Tbone1,inv_bone1),g_vertsOrg[row][corner]),g_boneWeights[row][corner].x);
+            mat4 M_prim2 = Mult(Tbone1,Mult(Mult(Tbone2,inv_bone2),inv_bone1));
+            vec3 vert_pos_bone2 = ScalarMult(MultVec3(M_prim2,g_vertsOrg[row][corner]),g_boneWeights[row][corner].y);
 
+            g_vertsRes[row][corner] = VectorAdd(vert_pos_bone1,vert_pos_bone2);
 			// ---=========	Uppgift 2: Soft skinning i CPU ===========------
 			// Deformera cylindern enligt det skelett som finns
 			// i g_bones.
@@ -266,6 +272,10 @@ void setBoneRotation(void)
 {
 	// Uppgift 3 TODO: H�r beh�ver du skicka �ver benens rotation
 	// till vertexshadern
+    mat4 Rbone1 = g_bones[0].rot;
+    mat4 Rbone2 = g_bones[1].rot;
+    glUniformMatrix4fv(glGetUniformLocation(g_shader, "Rbone1"), 1, GL_TRUE, Rbone1.m);
+    glUniformMatrix4fv(glGetUniformLocation(g_shader, "Rbone2"), 1, GL_TRUE, Rbone2.m);
 }
 
 
@@ -276,6 +286,10 @@ void setBoneLocation(void)
 {
 	// Uppgift 3 TODO: H�r beh�ver du skicka �ver benens position
 	// till vertexshadern
+    mat4 Tbone1 = T(g_bones[0].pos.x,g_bones[0].pos.y,g_bones[0].pos.z);
+    mat4 Tbone2 = T(g_bones[1].pos.x,g_bones[1].pos.y,g_bones[1].pos.z);
+    glUniformMatrix4fv(glGetUniformLocation(g_shader, "Tbone1"), 1, GL_TRUE, Tbone1.m);
+    glUniformMatrix4fv(glGetUniformLocation(g_shader, "Tbone2"), 1, GL_TRUE, Tbone2.m);
 }
 
 
@@ -286,16 +300,16 @@ void DrawCylinder()
 {
 	animateBones();
 
-	// ---------=========	UPG 2 ===========---------
+	// ---------=========	UPG 3 ===========---------
 	// Ers�tt DeformCylinder med en vertex shader som g�r vad DeformCylinder g�r.
 	// Begynnelsen till shaderkoden ligger i filen "shader.vert" ...
 
-	DeformCylinder();
+	// DeformCylinder();
 
 	setBoneLocation();
 	setBoneRotation();
 
-// update cylinder vertices:
+    // update cylinder vertices:
 	glBindVertexArray(cylinderModel->vao);
 	glBindBuffer(GL_ARRAY_BUFFER, cylinderModel->vb);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*kMaxRow*kMaxCorners, g_vertsRes, GL_DYNAMIC_DRAW);

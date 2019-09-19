@@ -239,34 +239,73 @@ void setupBones(void)
 }
 
 
+float anim_angle;
+
 ///////////////////////////////////////////////////////
 //		D E F O R M  C Y L I N D E R
 //
 // Desc:	deformera cylinder meshen enligt skelettet
 void DeformCylinder()
 {
-  //vec3 v[kMaxBones];
+    //vec3 v[kMaxBones];
 
-  //float w[kMaxBones];
-  int row, corner;
+    //float w[kMaxBones];
+    int row, corner;
+    mat4 inv_M[kMaxBones], Mbone[kMaxBones], Ranim[kMaxBones];
 
-  // f�r samtliga vertexar
-  for (row = 0; row < kMaxRow; row++)
-  {
-    for (corner = 0; corner < kMaxCorners; corner++)
+    for (int bone = 0; bone < kMaxBones; bone++)
     {
-      // ---------=========  UPG 4 ===========---------
-      // TODO: skinna meshen mot alla benen.
-      //
-      // data som du kan anv�nda:
-      // g_bonesRes[].rot
-      // g_bones[].pos
-      // g_boneWeights
-      // g_vertsOrg
-      // g_vertsRes
-
+        mat4 Rbone = g_bonesRes[bone].rot;
+        mat4 Tbone = T(g_bones[bone].pos.x, g_bones[bone].pos.y, g_bones[bone].pos.z);
+        mat4 Mbone_tmp = Mult(Rbone, Tbone);
+        inv_M[bone] = InvertMat4(Tbone);
+        Mbone[bone] = Mbone_tmp;
+        Ranim[bone] = Rbone;
     }
-  }
+    // f�r samtliga vertexar
+
+    mat4 m_mb[kMaxBones], m_bm[kMaxBones];
+    for (int bone = 0; bone < kMaxBones; bone++)
+    {
+        mat4 temp_m = Mult(Mbone[0],Ranim[0]);
+        mat4 temp_inv = inv_M[0];
+
+        for (int i = 0; i < bone; i++)
+        {
+            if (i == 0){break;}
+
+            //temp_m = Mult(temp_m,Mult(Mbone[i],Ranim[i]));
+            temp_m = Mult(temp_m,Mbone[i]);
+            temp_inv = Mult(temp_inv,inv_M[i]);
+        }
+        m_mb[bone] = temp_inv;
+        m_bm[bone] = temp_m;
+        // Mbone_full[bone] = temp_m;//Mbone[bone];
+        // inv_Mbone_full[bone] = temp_inv;
+    }
+
+    for (row = 0; row < kMaxRow; row++)
+    {
+        for (corner = 0; corner < kMaxCorners; corner++)
+        {
+            // ---------=========  UPG 4 ===========---------
+            // TODO: skinna meshen mot alla benen.
+            //
+            // data som du kan anv�nda:
+            // g_bonesRes[].rot
+            // g_bones[].pos
+            // g_boneWeights
+            // g_vertsOrg
+            // g_vertsRes
+            vec3 temp_vert;
+            for (int bone = 0; bone < kMaxBones; bone++)
+            {
+                mat4 mat_bone = Mult(m_bm[bone],m_mb[bone]);
+                temp_vert = VectorAdd(temp_vert,(ScalarMult(MultVec3(mat_bone,g_vertsOrg[row][corner]),g_boneWeights[row][corner][bone])));
+            }
+            g_vertsRes[row][corner] = temp_vert;
+        }
+    }
 }
 
 
@@ -278,18 +317,19 @@ void animateBones(void)
 {
 	int bone;
 	// Hur mycket kring varje led? �ndra g�rna.
-	float angleScales[10] = { 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f };
+    float angleScales[10] = { 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f };
+	// float angleScales[10] = { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 };
 
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
 	// Hur mycket skall vi vrida?
 	float angle = sin(time * 3.f) / 2.0f;
-
 	memcpy(&g_bonesRes, &g_bones, kMaxBones*sizeof(Bone));
 
 	g_bonesRes[0].rot = Rz(angle * angleScales[0]);
 
 	for (bone = 1; bone < kMaxBones; bone++)
 		g_bonesRes[bone].rot = Rz(angle * angleScales[bone]);
+
 }
 
 
