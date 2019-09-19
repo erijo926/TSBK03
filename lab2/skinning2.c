@@ -245,28 +245,58 @@ void setupBones(void)
 // Desc:	deformera cylinder meshen enligt skelettet
 void DeformCylinder()
 {
-  //vec3 v[kMaxBones];
+    //vec3 v[kMaxBones];
 
-  //float w[kMaxBones];
-  int row, corner;
+    //float w[kMaxBones];
+    int row, corner;
 
-  // f�r samtliga vertexar
-  for (row = 0; row < kMaxRow; row++)
-  {
-    for (corner = 0; corner < kMaxCorners; corner++)
+    mat4 Tbone[kMaxBones], Rbone[kMaxBones], Mbone[kMaxBones], inv_bone[kMaxBones];
+    mat4 m_mb, m_bm;
+    mat4 m[kMaxBones];
+    vec3 v_prim[kMaxBones], tmp_v[kMaxBones];
+    // f�r samtliga vertexar
+    for (row = 0; row < kMaxRow; row++)
     {
-      // ---------=========  UPG 4 ===========---------
-      // TODO: skinna meshen mot alla benen.
-      //
-      // data som du kan anv�nda:
-      // g_bonesRes[].rot
-      // g_bones[].pos
-      // g_boneWeights
-      // g_vertsOrg
-      // g_vertsRes
+        for (corner = 0; corner < kMaxCorners; corner++)
+        {
+            // ---------=========  UPG 4 ===========---------
+            // TODO: skinna meshen mot alla benen.
+            //
+            // data som du kan anv�nda:
+            // g_bonesRes[].rot
+            // g_bones[].pos
+            // g_boneWeights
+            // g_vertsOrg
+            // g_vertsRes
+            vec3 v_sum;
+            for (int bone = 0; bone < kMaxBones; bone++)
+            {
+                Tbone[bone] = T(g_bones[bone].pos.x,g_bones[bone].pos.y,g_bones[bone].pos.z);
+                Rbone[bone] = g_bonesRes[bone].rot;
+                Mbone[bone] = Mult(Tbone[bone],Rbone[bone]);
+                inv_bone[bone] = InvertMat4(Mbone[bone]);
+                if (bone == 0)
+                {
+                  m_mb = inv_bone[0];
+                  m_bm = Tbone[0];
+                } else {
+                  m_mb = Mult(inv_bone[bone],m_mb);
+                  m_bm = Mult(m_bm,Tbone[bone]);
+                }
+                m[bone] = Mult(m_bm,m_mb);
 
+                tmp_v[bone] = MultVec3(m[bone],g_vertsOrg[row][corner]);
+                v_prim[bone] = ScalarMult(tmp_v[bone],g_boneWeights[row][corner][bone]);
+            }
+            v_sum = VectorAdd(v_prim[0],VectorAdd(v_prim[1],VectorAdd(v_prim[2],VectorAdd(v_prim[3],VectorAdd(v_prim[4],VectorAdd(v_prim[5],VectorAdd(v_prim[6],VectorAdd(v_prim[7],VectorAdd(v_prim[8],v_prim[9])))))))));
+            g_vertsRes[row][corner] = v_sum;
+            // vec3 vert_pos_bone1 = ScalarMult(v_prim[0],g_boneWeights[row][corner][0]);
+            // vec3 vert_pos_bone2 = ScalarMult(v_prim[1],g_boneWeights[row][corner][1]);
+            // g_vertsRes[row][corner] = VectorAdd(vert_pos_bone1,vert_pos_bone2);
+            // g_vertsRes[row][corner] = VectorAdd(v_prim[0],v_prim[1]);
+
+        }
     }
-  }
 }
 
 
@@ -316,24 +346,24 @@ void setBoneLocation(void)
 // Desc:	s�tter bone positionen i vertex shadern
 void DrawCylinder()
 {
-  animateBones();
+    animateBones();
 
-  // ---------=========  UPG 2 (extra) ===========---------
-  // ers�tt DeformCylinder med en vertex shader som g�r vad DeformCylinder g�r.
-  // begynelsen till shaderkoden ligger i filen "ShaderCode.vert" ...
-  //
+    // ---------=========  UPG 2 (extra) ===========---------
+    // ers�tt DeformCylinder med en vertex shader som g�r vad DeformCylinder g�r.
+    // begynelsen till shaderkoden ligger i filen "ShaderCode.vert" ...
+    //
 
-  DeformCylinder();
+    DeformCylinder();
 
-  // setBoneLocation();
-  // setBoneRotation();
+    // setBoneLocation();
+    // setBoneRotation();
 
-// update cylinder vertices:
-	glBindVertexArray(cylinderModel->vao);
-	glBindBuffer(GL_ARRAY_BUFFER, cylinderModel->vb);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*kMaxRow*kMaxCorners, g_vertsRes, GL_DYNAMIC_DRAW);
+    // update cylinder vertices:
+    glBindVertexArray(cylinderModel->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, cylinderModel->vb);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*kMaxRow*kMaxCorners, g_vertsRes, GL_DYNAMIC_DRAW);
 
-	DrawModel(cylinderModel, g_shader, "in_Position", "in_Normal", "in_TexCoord");
+    DrawModel(cylinderModel, g_shader, "in_Position", "in_Normal", "in_TexCoord");
 }
 
 

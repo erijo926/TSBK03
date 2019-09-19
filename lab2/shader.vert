@@ -30,8 +30,8 @@ void main(void)
     vec4 vert_pos_bone2 = ((M_prim2*vec4(in_Position,1.0))*in_TexCoord.y);
 
 	// transformera resultatet med ModelView- och Projection-matriserna
-	// gl_Position = matrix * vec4(vert_pos_bone1+vert_pos_bone2, 1.0);
-    gl_Position = matrix * (vert_pos_bone1+vert_pos_bone2);
+	gl_Position = matrix * vec4(in_Position, 1.0);
+    // gl_Position = matrix * (vert_pos_bone1+vert_pos_bone2);
 
 	// s�tt r�d+gr�n f�rgkanal till vertex Weights
 	vec4 color = vec4(in_TexCoord.x, in_TexCoord.y, 0.0, 1.0);
