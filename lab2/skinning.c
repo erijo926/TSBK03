@@ -211,24 +211,25 @@ void DeformCylinder()
             {
                 Tbone[bone] = T(g_bones[bone].pos.x,g_bones[bone].pos.y,g_bones[bone].pos.z);
                 Rbone[bone] = g_bones[bone].rot;
-                Mbone[bone] = Mult(Tbone[bone],Rbone[bone]);
+                Mbone[bone] = Tbone[bone]; //Mult(Tbone[bone],Rbone[bone]);
                 inv_bone[bone] = InvertMat4(Mbone[bone]);
                 if (bone == 0)
                 {
-                    m_mb = inv_bone[0];
-                    m_bm = Tbone[0];
+                  m_mb = inv_bone[0];
+                  m_bm = Mult(Tbone[0],Rbone[0]);
                 } else {
-                    m_mb = Mult(inv_bone[bone],m_mb);
-                    m_bm = Mult(m_bm,Tbone[bone]);
+                  m_mb = Mult(inv_bone[bone],m_mb);
+                  m_bm = Mult(m_bm,Mult(Tbone[bone],Rbone[bone]));
                 }
                 m[bone] = Mult(m_bm,m_mb);
                 tmp_v[bone] = MultVec3(m[bone],g_vertsOrg[row][corner]);
                 if (bone & 1) v_prim[bone] = ScalarMult(tmp_v[bone],g_boneWeights[row][corner].y);
 				if ((bone+1) & 1) v_prim[bone] = ScalarMult(tmp_v[bone],g_boneWeights[row][corner].x);
 
-                v_sum = VectorAdd(v_sum,v_prim[bone]);
+                if (bone == 0) v_sum = v_prim[0];
+                else v_sum = VectorAdd(v_sum,v_prim[bone]);
             }
-            g_vertsRes[row][corner] = VectorAdd(v_prim[0],v_prim[1]);
+            g_vertsRes[row][corner] = v_sum;
 
             // vec3 vert_pos_bone1 = ScalarMult(v_prim[0],g_boneWeights[row][corner].x);
             // vec3 vert_pos_bone2 = ScalarMult(v_prim[1],g_boneWeights[row][corner].y);
