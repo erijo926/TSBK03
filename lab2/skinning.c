@@ -44,6 +44,7 @@ typedef struct Triangle
 
 #define kMaxRow 10
 #define kMaxCorners 8
+#define kMaxBones 2
 #define kMaxg_poly ((kMaxRow-1) * kMaxCorners * 2)
 #ifndef Pi
 #define Pi 3.1416
@@ -195,43 +196,45 @@ void DeformCylinder()
 	// f�r samtliga vertexar
     // row traverserar i cylinderns l�ngdriktning,
     // corner traverserar "runt" cylindern
+
+    mat4 Tbone[kMaxBones], Rbone[kMaxBones], Mbone[kMaxBones], inv_bone[kMaxBones];
+    mat4 m_mb, m_bm;
+    mat4 m[kMaxBones];
+    vec3 tmp_v[kMaxBones],v_prim[kMaxBones];
+
 	for (row = 0; row < kMaxRow; row++)
 	{
 		for (corner = 0; corner < kMaxCorners; corner++)
 		{
-			// ----=========	Uppgift 1: Hard skinning (stitching) i CPU ===========-----
-			// Deformera cylindern enligt det skelett som finns
-			// i g_bones.
-			//
-			// G�r hard skinning.
-			//
-			// g_bones inneh�ller benen.
-			// g_vertsOrg inneh�ller ursprunglig vertexdata.
-			// g_vertsRes inneh�ller den vertexdata som skickas till OpenGL.
-            mat4 Tbone1 = T(g_bones[0].pos.x,g_bones[0].pos.y,g_bones[0].pos.z);
-            mat4 Tbone2 = T(g_bones[1].pos.x,g_bones[1].pos.y,g_bones[1].pos.z);
-            mat4 Rbone1 = g_bones[0].rot;
-            mat4 Rbone2 = g_bones[1].rot;
-
-            mat4 Mbone1 = Mult(Tbone1,Rbone1);
-            mat4 Mbone2 = Mult(Tbone2,Rbone2);
-
-            mat4 inv_bone1 = InvertMat4(Mbone1);
-            mat4 inv_bone2 = InvertMat4(Mbone2);
-            /*
-            if (weight[row] > 0.5)
+            vec3 v_sum;
+            for (int bone = 0; bone < kMaxBones; bone++)
             {
-                g_vertsRes[row][corner] = MultVec3(Mult(Tbone2, Mult(inv_bone2,inv_bone1)),g_vertsOrg[row][corner]);
-            }
-            else {
-                g_vertsRes[row][corner] = g_vertsOrg[row][corner];
-            }
-            */
-            vec3 vert_pos_bone1 = ScalarMult(MultVec3(Mult(Tbone1,inv_bone1),g_vertsOrg[row][corner]),g_boneWeights[row][corner].x);
-            mat4 M_prim2 = Mult(Tbone1,Mult(Mult(Tbone2,inv_bone2),inv_bone1));
-            vec3 vert_pos_bone2 = ScalarMult(MultVec3(M_prim2,g_vertsOrg[row][corner]),g_boneWeights[row][corner].y);
+                Tbone[bone] = T(g_bones[bone].pos.x,g_bones[bone].pos.y,g_bones[bone].pos.z);
+                Rbone[bone] = g_bones[bone].rot;
+                Mbone[bone] = Tbone[bone]; //Mult(Tbone[bone],Rbone[bone]);
+                inv_bone[bone] = InvertMat4(Mbone[bone]);
+                if (bone == 0)
+                {
+                  m_mb = inv_bone[0];
+                  m_bm = Mult(Tbone[0],Rbone[0]);
+                } else {
+                  m_mb = Mult(inv_bone[bone],m_mb);
+                  m_bm = Mult(m_bm,Mult(Tbone[bone],Rbone[bone]));
+                }
+                m[bone] = Mult(m_bm,m_mb);
+                tmp_v[bone] = MultVec3(m[bone],g_vertsOrg[row][corner]);
+                if (bone & 1) v_prim[bone] = ScalarMult(tmp_v[bone],g_boneWeights[row][corner].y);
+				if ((bone+1) & 1) v_prim[bone] = ScalarMult(tmp_v[bone],g_boneWeights[row][corner].x);
 
-            g_vertsRes[row][corner] = VectorAdd(vert_pos_bone1,vert_pos_bone2);
+                if (bone == 0) v_sum = v_prim[0];
+                else v_sum = VectorAdd(v_sum,v_prim[bone]);
+            }
+            g_vertsRes[row][corner] = v_sum;
+
+            // vec3 vert_pos_bone1 = ScalarMult(v_prim[0],g_boneWeights[row][corner].x);
+            // vec3 vert_pos_bone2 = ScalarMult(v_prim[1],g_boneWeights[row][corner].y);
+            // g_vertsRes[row][corner] = VectorAdd(vert_pos_bone1,vert_pos_bone2);
+
 			// ---=========	Uppgift 2: Soft skinning i CPU ===========------
 			// Deformera cylindern enligt det skelett som finns
 			// i g_bones.
@@ -305,9 +308,8 @@ void DrawCylinder()
 	// Begynnelsen till shaderkoden ligger i filen "shader.vert" ...
 
 	DeformCylinder();
-
-	// setBoneRotation();
-    // setBoneLocation();
+	//setBoneLocation();
+	//setBoneRotation();
 
     // update cylinder vertices:
 	glBindVertexArray(cylinderModel->vao);

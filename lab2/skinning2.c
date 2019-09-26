@@ -365,17 +365,17 @@ void setBoneLocation(void)
 // Desc:    s�tter bone positionen i vertex shadern
 void DrawCylinder()
 {
-  animateBones();
+    animateBones();
 
-  // ---------=========  UPG 2 (extra) ===========---------
-  // ers�tt DeformCylinder med en vertex shader som g�r vad DeformCylinder g�r.
-  // begynelsen till shaderkoden ligger i filen "ShaderCode.vert" ...
-  //
+    // ---------=========  UPG 2 (extra) ===========---------
+    // ers�tt DeformCylinder med en vertex shader som g�r vad DeformCylinder g�r.
+    // begynelsen till shaderkoden ligger i filen "ShaderCode.vert" ...
+    //
 
-  DeformCylinder();
+    DeformCylinder();
 
-  // setBoneLocation();
-  // setBoneRotation();
+    // setBoneLocation();
+    // setBoneRotation();
 
 // update cylinder vertices:
     glBindVertexArray(cylinderModel->vao);
