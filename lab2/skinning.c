@@ -304,10 +304,10 @@ void DrawCylinder()
 	// Ers�tt DeformCylinder med en vertex shader som g�r vad DeformCylinder g�r.
 	// Begynnelsen till shaderkoden ligger i filen "shader.vert" ...
 
-	// DeformCylinder();
+	DeformCylinder();
 
-	setBoneLocation();
-	setBoneRotation();
+	// setBoneRotation();
+    // setBoneLocation();
 
     // update cylinder vertices:
 	glBindVertexArray(cylinderModel->vao);
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 #endif
 	BuildCylinder();
 	setupBones();
-	g_shader = loadShaders("shader.vert" , "shader.frag");
+	g_shader = loadShaders("shader0.vert" , "shader0.frag");
 
 	glutMainLoop();
 	exit(0);
