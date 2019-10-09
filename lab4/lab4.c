@@ -13,37 +13,93 @@
 #endif
 
 #include <stdlib.h>
+#include <math.h>
 #include "LoadTGA.h"
 #include "SpriteLight.h"
 #include "GL_utilities.h"
 
-// LŠgg till egna globaler hŠr efter behov.
-
+// Lï¿½gg till egna globaler hï¿½r efter behov.
 
 void SpriteBehavior() // Din kod!
 {
-// LŠgg till din labbkod hŠr. Det gŒr bra att Šndra var som helst i
-// koden i švrigt, men mycket kan samlas hŠr. Du kan utgŒ frŒn den
-// globala listroten, gSpriteRoot, fšr att kontrollera alla sprites
-// hastigheter och positioner, eller arbeta frŒn egna globaler.
+    float max_dist = 300.0;
+    float max_speed = 25.0;
+    SpritePtr i = gSpriteRoot;
+    do {
+        int count = 0;
+        SpritePtr j = gSpriteRoot;
+        do {
+            if (i != j)
+            {
+                float dist_h = j->position.h - i->position.h;
+                float dist_v = j->position.v - i->position.v;
+                float dist_norm = sqrt(dist_h*dist_h+dist_v*dist_v);
+
+                if (dist_norm < max_dist)
+                {
+                    i->avg_position.h +=(j->position.h - i->position.h);
+                    i->avg_position.v +=(j->position.v - i->position.v);
+                    i->sep_position.h +=(i->position.h - j->position.h);
+                    i->sep_position.v +=(i->position.v - j->position.v);
+                    i->speed_diff.h += (j->speed.h- i->speed.h);
+                    i->speed_diff.v += (j->speed.v- i->speed.v);
+
+                    count += 1;
+                }
+            }
+
+            j = j->next;
+        } while (j != NULL);
+        if (count != 0)
+        {
+            i->avg_position.h /= count;
+            i->avg_position.v /= count;
+            i->sep_position.h /= count;
+            i->sep_position.v /= count;
+            i->speed_diff.h /= count;
+            i->speed_diff.v /= count;
+        }
+        i = i->next;
+    } while (i != NULL);
+
+    i = gSpriteRoot;
+    float cohesion_weight = 0.001;
+    float separation_weight = 0.0005;
+    float align_weight = 0.01;
+    float v, h;
+    do {
+        h = i->avg_position.h*cohesion_weight-i->sep_position.h*separation_weight;
+        v = i->avg_position.v*cohesion_weight-i->sep_position.v*separation_weight;
+        i->speed.h += h+i->speed_diff.h*align_weight;
+        i->speed.v += v+i->speed_diff.h*align_weight;
+
+        // if (i->speed.h > max_speed || i->speed.v > max_speed)
+        // {
+        //     i->speed.h = max_speed;
+        //     i->speed.v = max_speed;
+        //     printf("%f %f\n", i->speed.h,i->speed.v);
+        // }
+
+        i = i->next;
+    } while (i != NULL);
 }
 
 // Drawing routine
 void Display()
 {
 	SpritePtr sp;
-	
+
 	glClearColor(0, 0, 0.2, 1);
 	glClear(GL_COLOR_BUFFER_BIT+GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
+
 	DrawBackground();
-	
+
 	SpriteBehavior(); // Din kod!
-	
-// Loop though all sprites. (Several loops in real engine.)
+
+    // Loop though all sprites. (Several loops in real engine.)
 	sp = gSpriteRoot;
 	do
 	{
@@ -51,7 +107,7 @@ void Display()
 		DrawSprite(sp);
 		sp = sp->next;
 	} while (sp != NULL);
-	
+
 	glutSwapBuffers();
 }
 
@@ -93,17 +149,18 @@ void Key(unsigned char key,
 void Init()
 {
 	TextureData *sheepFace, *blackFace, *dogFace, *foodFace;
-	
+
 	LoadTGATextureSimple("bilder/leaves.tga", &backgroundTexID); // Bakgrund
-	
-	sheepFace = GetFace("bilder/sheep.tga"); // Ett fŒr
-	blackFace = GetFace("bilder/blackie.tga"); // Ett svart fŒr
+
+	sheepFace = GetFace("bilder/sheep.tga"); // Ett fï¿½r
+	blackFace = GetFace("bilder/blackie.tga"); // Ett svart fï¿½r
 	dogFace = GetFace("bilder/dog.tga"); // En hund
 	foodFace = GetFace("bilder/mat.tga"); // Mat
-	
+
 	NewSprite(sheepFace, 100, 200, 1, 1);
 	NewSprite(sheepFace, 200, 100, 1.5, -1);
 	NewSprite(sheepFace, 250, 200, -1, 1.5);
+    NewSprite(sheepFace, 200, 250, -1, 1.5);
 }
 
 int main(int argc, char **argv)
@@ -113,15 +170,15 @@ int main(int argc, char **argv)
 	glutInitWindowSize(800, 600);
 	glutInitContextVersion(3, 2);
 	glutCreateWindow("SpriteLight demo / Flocking");
-	
+
 	glutDisplayFunc(Display);
 	glutTimerFunc(20, Timer, 0); // Should match the screen synch
 	glutReshapeFunc(Reshape);
 	glutKeyboardFunc(Key);
-	
+
 	InitSpriteLight();
 	Init();
-	
+
 	glutMainLoop();
 	return 0;
 }
