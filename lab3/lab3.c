@@ -103,14 +103,15 @@ Material ballMt = { { 1.0, 1.0, 1.0, 1.0 }, { 1.0, 1.0, 1.0, 0.0 },
                 };
 
 
-enum {kNumBalls = 16}; // Change as desired, max 16
+enum {kNumBalls =16}; // Change as desired, max 16
 
 //------------------------------Globals---------------------------------
 ModelTexturePair tableAndLegs, tableSurf;
 Model *sphere;
 Ball ball[16]; // We only use kNumBalls but textures for all 16 are always loaded so they must exist. So don't change here, change above.
 
-GLfloat deltaT, currentTime;
+GLfloat deltaT = 0.02;
+GLfloat currentTime;
 
 vec3 cam, point;
 
@@ -183,11 +184,12 @@ void updateWorld()
 			ball[i].P.z = -abs(ball[i].P.z);
 	}
 	// Detect collisions, calculate speed differences, apply forces
-    float eps = 1.0;
+  float eps = 1.0;
 	for (i = 0; i < kNumBalls; i++)
     {
         for (j = i+1; j < kNumBalls; j++)
         {
+				//	printf("i %i j %i\n", i,j);
             vec3 distance = VectorSub(ball[i].X,ball[j].X);
             float ball_distance = Norm(distance);
             vec3 n = Normalize(distance);
@@ -195,19 +197,12 @@ void updateWorld()
             float v_normal = DotProduct(v_rel,n);
             float j_scalar = (-(eps+1.0)*v_normal)/((1.0/ball[i].mass)+(1.0/ball[j].mass));
             vec3 impulse = ScalarMult(n,(j_scalar/deltaT));
-            if (ball_distance == 0.0)
+
+            if (ball_distance < 2*kBallSize && DotProduct(v_rel, distance) < 0)// && ball_distance > 0.5*kBallSize)
             {
-                // float r = 1.0*(rand() % (1 + 1 - 0)) + 0;
-                float scale = 10.0;
-                ball[i].F = SetVector(scale,scale,scale);
-                printf("inuti %f %f %f\n", ball[i].F.x,ball[i].F.y,ball[i].F.z);
-                // ball[j].F = SetVector(scale*r,scale*r,scale*r);
-            }
-            else if (ball_distance < 2*kBallSize)
-            {
-                ball[i].F = ScalarMult(impulse,1/ball[i].mass);
-                ball[j].F = ScalarMult(impulse,-1.0/ball[j].mass);
-                printf("kollision %f %f %f\n", ball[i].F.x,ball[i].F.y,ball[i].F.z);
+                ball[i].F =ScalarMult(impulse,0.5/ball[i].mass);
+                ball[j].F =ScalarMult(impulse,-0.5/ball[j].mass);
+
             }
         }
     }
@@ -224,24 +219,20 @@ void updateWorld()
 	}
 
     // Update state, follows the book closely
-    float tot_p = 0;
+
+  float tot_p = 0;
 	for (i = 0; i < kNumBalls; i++)
 	{
 		vec3 dX, dP, dL, dO;
 		mat4 Rd;
-        float mu = 5.0;
-        tot_p += Norm(ball[i].P);
-        vec3 v_rel = VectorAdd(ball[i].v,CrossProduct(ball[i].omega,SetVector(0,-kBallSize,0)));
+    float mu = 5.0;
+    tot_p += Norm(ball[i].P);
+    vec3 v_rel = VectorAdd(ball[i].v,CrossProduct(ball[i].omega,SetVector(0,-kBallSize,0)));
 
-        if (Norm(ball[i].v) != 0) {
-            float v_norm = DotProduct(v_rel,ScalarMult(ball[i].v,1/Norm(ball[i].v)));
-            vec3 F_mu = ScalarMult(ball[i].v,v_norm*-mu);
-            ball[i].T = CrossProduct(SetVector(0,-kBallSize,0),F_mu);
-        }
-        // vec3 F_mu = ScalarMult(ball[i].v,Norm(v_rel)*-mu); //DotProduct(ball[i].omega,ball[i].P));
-        // }
+		vec3 F_mu = ScalarMult(v_rel,-mu);
 
-        //		v := P * 1/mass
+		ball[i].T = CrossProduct(SetVector(0,-kBallSize,0), F_mu);
+
 		ball[i].v = ScalarMult(ball[i].P, 1.0/(ball[i].mass));
         //		X := X + v*dT
 		dX = ScalarMult(ball[i].v, deltaT); // dX := v*dT
@@ -252,16 +243,17 @@ void updateWorld()
 		Rd = Mult(Rd, ball[i].R); // Rotate the diff (NOTE: This was missing in early versions.)
 		ball[i].R = MatrixAdd(ball[i].R, Rd);
         //		P := P + F * dT
+
 		dP = ScalarMult(ball[i].F, deltaT); // dP := F*dT
-		ball[i].P = ScalarMult(VectorAdd(ball[i].P, dP),0.999); // P := P + dP
+		ball[i].P = ScalarMult(VectorAdd(ball[i].P, dP),1.0); // P := P + dP
         //		L := L + t * dT
 		dL = ScalarMult(ball[i].T, deltaT); // dL := T*dT
-		ball[i].L = ScalarMult(VectorAdd(ball[i].L, dL), 0.9); // L := L + dL
+		ball[i].L = ScalarMult(VectorAdd(ball[i].L, dL), 1.0); // L := L + dL
 		OrthoNormalizeMatrix(&ball[i].R);
 
-        ball[i].omega = MultVec3(ball[i].Ji,ball[i].L) ;
+    ball[i].omega = MultVec3(ball[i].Ji,ball[i].L) ;
 	}
-    // printf("%f\n", tot_p);
+   //printf("P: %f\n", tot_p);
 }
 
 void renderBall(int ballNr)
@@ -300,7 +292,7 @@ void renderTable()
     renderModelTexturePair(&tableSurf);
 }
 //-------------------------------------------------------------------------------------
-
+	float m_ball = 3.0;
 void init()
 {
 	dumpInfo();  // shader info
@@ -341,7 +333,10 @@ void init()
     // Initialize ball data, positions etc
 	for (i = 0; i < kNumBalls; i++)
 	{
-		ball[i].mass = 1.0;
+		if (i == 0)
+		{ball[i].mass = m_ball;}
+		else{ball[i].mass = 1.0;}
+
 		ball[i].X = SetVector(0.0, 0.0, 0.0);
 		ball[i].P = SetVector(((float)(i % 13))/ 50.0, 0.0, ((float)(i % 15))/50.0);
 		ball[i].R = IdentityMatrix();
@@ -356,29 +351,30 @@ void init()
     }
 
     // TEST CASE 1
-    // ball[0].X = SetVector(0, 0, 1.5);
-	// ball[1].X = SetVector(0, 0, 1.0);
-	// ball[2].X = SetVector(0, 0, 0.5);
-    // ball[3].X = SetVector(0, 0, 0);
-    // ball[0].P = SetVector(0, 0, 1.00);
-	// ball[1].P = SetVector(0, 0, 0);
-	// ball[2].P = SetVector(0, 0, 0);
-    // ball[3].P = SetVector(0, 0, 0);
-
-    // TEST CASE 2
+		ball[0].mass = 3.0;
     ball[0].X = SetVector(0, 0, 1.5);
-	ball[1].X = SetVector(0.2, 0, 1.0);
-    ball[2].X = SetVector(0.4, 0, 1.0);
-    ball[3].X = SetVector(0.4, 0, -1.3);
-    ball[4].X = SetVector(0.7, 0, -1.3);
-    ball[5].X = SetVector(0.2, 0, 1.5);
-	ball[6].X = SetVector(0.1, 0, 0.5);
-    ball[7].X = SetVector(0.1, 0, 0);
-
-    ball[0].P = SetVector(0, 0, 1.5);
+	ball[1].X = SetVector(0, 0, 1.0);
+	ball[2].X = SetVector(0, 0, 0.5);
+    ball[3].X = SetVector(0, 0, 0);
+    ball[0].P = SetVector(0, 0, 1.00);
 	ball[1].P = SetVector(0, 0, 0);
 	ball[2].P = SetVector(0, 0, 0);
     ball[3].P = SetVector(0, 0, 0);
+
+    // TEST CASE 2
+  //   ball[0].X = SetVector(0, 0, 1.5);
+	// ball[1].X = SetVector(0.2, 0, 1.0);
+  //   ball[2].X = SetVector(0.4, 0, 1.0);
+  //   ball[3].X = SetVector(0.4, 0, -1.3);
+  //   ball[4].X = SetVector(0.7, 0, -1.3);
+  //   ball[5].X = SetVector(0.2, 0, 1.5);
+	// ball[6].X = SetVector(0.1, 0, 0.5);
+  //   ball[7].X = SetVector(0.1, 0, 0);
+	//
+  //   ball[0].P = SetVector(0, 0, 1.5);
+	// ball[1].P = SetVector(0, 0, 0);
+	// ball[2].P = SetVector(0, 0, 0);
+  //   ball[3].P = SetVector(0, 0, 0);
     // ball[2].mass = 10.0;
 
 
