@@ -19,13 +19,22 @@
 #include "GL_utilities.h"
 
 // L�gg till egna globaler h�r efter behov.
+TextureData *sheepFace, *blackFace, *dogFace, *foodFace;
 
 void SpriteBehavior() // Din kod!
 {
-    float max_dist = 300.0;
-    float max_speed = 25.0;
+    float coh_dist = 100.0;
+    float sep_dist = 50.0;
     SpritePtr i = gSpriteRoot;
+
     do {
+        i->avg_position.h = 0;
+        i->avg_position.v = 0;
+        i->sep_position.h = 0;
+        i->sep_position.v = 0;
+        i->speed_diff.h = 0;
+        i->speed_diff.v = 0;
+
         int count = 0;
         SpritePtr j = gSpriteRoot;
         do {
@@ -34,17 +43,26 @@ void SpriteBehavior() // Din kod!
                 float dist_h = j->position.h - i->position.h;
                 float dist_v = j->position.v - i->position.v;
                 float dist_norm = sqrt(dist_h*dist_h+dist_v*dist_v);
-
-                if (dist_norm < max_dist)
+                if (dist_norm < coh_dist)
                 {
                     i->avg_position.h +=(j->position.h - i->position.h);
                     i->avg_position.v +=(j->position.v - i->position.v);
-                    i->sep_position.h +=(i->position.h - j->position.h);
-                    i->sep_position.v +=(i->position.v - j->position.v);
                     i->speed_diff.h += (j->speed.h- i->speed.h);
                     i->speed_diff.v += (j->speed.v- i->speed.v);
 
                     count += 1;
+                }
+
+                if (j->face == dogFace && dist_norm < 200.0)
+                {
+                    // i->dogDistance = dist_norm;
+                    i->sep_position.h +=(i->position.h - j->position.h)*(1+(1-dist_norm/200.0)*20.0);
+                    i->sep_position.v +=(i->position.v - j->position.v)*(1+(1-dist_norm/200.0)*20.0);
+                }
+                else if (dist_norm < sep_dist)
+                {
+                    i->sep_position.h +=(i->position.h - j->position.h)*(1+(1-dist_norm/sep_dist)*10.0);
+                    i->sep_position.v +=(i->position.v - j->position.v)*(1+(1-dist_norm/sep_dist)*10.0);
                 }
             }
 
@@ -63,22 +81,42 @@ void SpriteBehavior() // Din kod!
     } while (i != NULL);
 
     i = gSpriteRoot;
-    float cohesion_weight = 0.001;
-    float separation_weight = 0.0005;
-    float align_weight = 0.01;
+    float cohesion_weight = 0.0005;
+    float align_weight = 0.1;
+    float sep_weight = 0.01;
     float v, h;
     do {
-        h = i->avg_position.h*cohesion_weight-i->sep_position.h*separation_weight;
-        v = i->avg_position.v*cohesion_weight-i->sep_position.v*separation_weight;
+
+        float sep_norm = sqrt(i->sep_position.h*i->sep_position.h + i->sep_position.v *i->sep_position.v);
+        h = sep_weight*(i->sep_position.h);//(sep_norm+0.00001);
+        v = sep_weight*(i->sep_position.v);//(sep_norm+0.00001);
+        h += i->avg_position.h*cohesion_weight ;
+        v += i->avg_position.v*cohesion_weight ;
         i->speed.h += h+i->speed_diff.h*align_weight;
         i->speed.v += v+i->speed_diff.h*align_weight;
 
-        // if (i->speed.h > max_speed || i->speed.v > max_speed)
-        // {
-        //     i->speed.h = max_speed;
-        //     i->speed.v = max_speed;
-        //     printf("%f %f\n", i->speed.h,i->speed.v);
+        float v_norm = sqrt(i->speed.h *i->speed.h + i->speed.v *i->speed.v );
+
+        // if (i->dogDistance < 100.0 && i->dogDistance > 1.0){
+        //     i->speed.h += 0.1 * (1+(1-i->dogDistance/100)*2);
+        //     i->speed.v += 0.1 * (1+(1-i->dogDistance/100)*2);
         // }
+
+        if (v_norm < 3.0) {
+            i->speed.h *= 3.0/v_norm;
+            i->speed.v *= 3.0/v_norm;
+        }
+        if (v_norm > 4.0) {
+            i->speed.h *= 4.0/v_norm;
+            i->speed.v *= 4.0/v_norm;
+        }
+
+        if (i->face == blackFace)
+        {
+            float rnd = (random()%100+50)*0.02;
+            i->speed.v *= rnd;
+            i->speed.h *= rnd;
+        }
 
         i = i->next;
     } while (i != NULL);
@@ -146,9 +184,14 @@ void Key(unsigned char key,
   }
 }
 
+void mouse_dragged(int x, int y)
+{
+    gSpriteRoot->position.h = x;
+    gSpriteRoot->position.v = 600.0-y;
+}
+
 void Init()
 {
-	TextureData *sheepFace, *blackFace, *dogFace, *foodFace;
 
 	LoadTGATextureSimple("bilder/leaves.tga", &backgroundTexID); // Bakgrund
 
@@ -157,10 +200,13 @@ void Init()
 	dogFace = GetFace("bilder/dog.tga"); // En hund
 	foodFace = GetFace("bilder/mat.tga"); // Mat
 
-	NewSprite(sheepFace, 100, 200, 1, 1);
-	NewSprite(sheepFace, 200, 100, 1.5, -1);
-	NewSprite(sheepFace, 250, 200, -1, 1.5);
-    NewSprite(sheepFace, 200, 250, -1, 1.5);
+    for (int i = 0; i < 100; i++)
+    {
+        NewSprite(sheepFace, random()%500, random()%500, 1, 1);
+    }
+
+    NewSprite(blackFace, 300, 300, -1, 1.5);
+    NewSprite(dogFace, 500, 500, -1, 1.5);
 }
 
 int main(int argc, char **argv)
@@ -170,7 +216,7 @@ int main(int argc, char **argv)
 	glutInitWindowSize(800, 600);
 	glutInitContextVersion(3, 2);
 	glutCreateWindow("SpriteLight demo / Flocking");
-
+    glutMotionFunc(mouse_dragged);
 	glutDisplayFunc(Display);
 	glutTimerFunc(20, Timer, 0); // Should match the screen synch
 	glutReshapeFunc(Reshape);

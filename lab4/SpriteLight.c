@@ -63,6 +63,7 @@ struct SpriteRec *NewSprite(TextureData *f, GLfloat h, GLfloat v, GLfloat hs, GL
     sp->sep_position.h = 0;
     sp->speed_diff.h = 0;
     sp->speed_diff.v = 0;
+    sp->dogDistance = 0;
 	return sp;
 }
 
