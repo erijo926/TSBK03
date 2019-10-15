@@ -47,7 +47,7 @@ Model *squareModel;
 int prevx = 0, prevy = 0;
 float px = 0, py = 0;
 float dist = 3;
-GLfloat camera[] = {10.0,10.0,10.0};
+GLfloat camera[] = {12.0,5.0,10.0};
 GLfloat camDist = 3.0;
 
 void init(void)
@@ -65,11 +65,7 @@ void init(void)
     squareModel = LoadDataToModel(
 			square, NULL, squareTexCoord, NULL,
 			squareIndices, 4, 6);
-    // glUniform3fv(glGetUniformLocation(program, "sentCam"), 1, camera);
-
-    // cam = SetVector(0, 5, 15);
-    // point = SetVector(0, 1, 0);
-    // zprInit(&viewMatrix, cam, point);
+    glUniform3fv(glGetUniformLocation(program, "sentCam"), 1, camera);
 }
 
 //Executes upon drag
@@ -92,10 +88,10 @@ void mouseDragged(int x, int y)
                 camDist*sin(px*(M_PI/180)),
                 camDist*cos(py*(M_PI/180))*cos(px*(M_PI/180))};
 
-    camera[0] = 10.0+loc.x;
-    camera[1] = 10.0+loc.y;
+    camera[0] = 12.0+loc.x;
+    camera[1] = 5.0+loc.y;
     camera[2] = 10.0+loc.z;
-    // glUniform3fv(glGetUniformLocation(program, "sentCam"), 1, camera);
+    glUniform3fv(glGetUniformLocation(program, "sentCam"), 1, camera);
     glutPostRedisplay();
 }
 

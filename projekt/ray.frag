@@ -3,7 +3,7 @@
 out vec4 outColor;
 
 uniform float time;
-// uniform vec3 sentCam;
+uniform vec3 sentCam;
 
 #define M_PI 3.14159265358979323846
 
@@ -15,59 +15,44 @@ float cubeDist(vec3 point, vec3 cube)
     return min(max(d.x, max(d.y, d.z)), 0.0)+length(max(d, 0.0));
 }
 
-float sphereDist(vec3 point, vec3 c, float r)
+float map_sphere(vec3 point, vec3 c, float r)
 {
-    // vec3 c = vec3(0.0,0.0,0.0); //Allows for moving the sphere later
     return length(point-c)-r;
 }
 
 float planeDist(vec3 p, float h)
 {
-  // n must be normalized
-  float d = p.y-h;
-  return d;
-  // return dot(p,n.xyz) + n.w;
-}
-
-float intersect(float A, float B)
-{
-    return max(A, B);
-}
-
-float funion(float A, float B)
-{
-    return min(A,B);
-}
-
-float smooth_union ( float d1, float d2, float k )
-{
-    float h = clamp(0.5 + 0.5*(d2-d1)/k, 0.0, 1.0);
-    return mix(d2, d1, h) - k*h*(1.0-h);
+    return p.y-h;
 }
 
 float map(vec3 p)
 {
-    float displacement = sin(time+p.x) * sin(time+p.y) * sin(time+p.z);
-
-    float floater = sphereDist(p,vec3(0.0,2.0,0.0),0.8);
+    // float displacement = sin(time+p.x) * sin(time+p.y) * sin(time+p.z);
     // float floater = cubeDist(p-vec3(0.0,1.5,0.0),vec3(0.5,0.5,0.5));
+    // float floater = map_sphere(p,vec3(0.0,0.6,0.0),0.6);
     float plane = planeDist(p, 0.0);
     float bbox = cubeDist(p, vec3(3.0,1.0,3.0));
 
-    return min(max(plane,bbox),floater);
+    return max(plane,bbox);
 }
 
-vec3 calc_norm(vec3 point, float delta)
+vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
 {
+    // vec3 c = vec3(0.0,1.0,0.0);
+    // float r = 0.5;
     return normalize(vec3(
-        map(vec3(point.x+delta, point.y, point.z)) - map(vec3(point.x-delta, point.y, point.z)),
-        map(vec3(point.x, point.y+delta, point.z)) - map(vec3(point.x, point.y-delta, point.z)),
-        map(vec3(point.x, point.y, point.z+delta)) - map(vec3(point.x, point.y, point.z-delta))
+        map_sphere(vec3(p.x+d, p.y, p.z),c,r) - map_sphere(vec3(p.x-d, p.y, p.z),c,r),
+        map_sphere(vec3(p.x, p.y+d, p.z),c,r) - map_sphere(vec3(p.x, p.y-d, p.z),c,r),
+        map_sphere(vec3(p.x, p.y, p.z+d),c,r) - map_sphere(vec3(p.x, p.y, p.z-d),c,r)
     ));
 }
 
-//This is the gluLookAt function
-mat4 lookAT(vec3 eye, vec3 center, vec3 up)
+vec3 water_norm(vec3 point, float d)
+{
+    return vec3(0,1,0);
+}
+//This is a copy of the gluLookAt function
+mat4 look_at(vec3 eye, vec3 center, vec3 up)
 {
     vec3 f = normalize(center - eye);
     vec3 s = normalize(cross(f, up));
@@ -81,20 +66,20 @@ mat4 lookAT(vec3 eye, vec3 center, vec3 up)
 }
 
 //From: http://prideout.net/blog/?p=64
-vec3 rayDirection(float fieldOfView, vec2 size, vec2 fragCoord)
+vec3 ray_dir(float fieldOfView, vec2 size, vec2 fragCoord)
 {
     vec2 xy = fragCoord-size/2.0;
     float z = size.y/tan(radians(fieldOfView)/2.0); //Distance to origin
     return normalize(vec3(xy,-z));
 }
 
-float shadow(vec3 origin, vec3 dir, float start, float end)
+float shadow(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
 {
     float k = 6;
     float soft = 1.0;
     for (float d=start; d<end;)
     {
-        float dist = map(origin+dir*d);
+        float dist = map_sphere(origin+dir*d, vec3(0.0,0.6,0.0),0.5);
         if (dist<0.001) return 0.0;
         soft = min(soft, k*dist/d);
         d += dist;
@@ -102,7 +87,21 @@ float shadow(vec3 origin, vec3 dir, float start, float end)
     return soft;
 }
 
-float cast_ray(vec3 origin, vec3 dir)
+vec3 trace_reflect(vec3 origin, vec3 in_dir, float start, vec3 normal, float end, vec3 c, float r)
+{
+    vec3 dir = reflect(normal,in_dir);
+    float k = 6;
+    float soft = 1.0;
+    for (float d=start; d<end;)
+    {
+        float dist = map_sphere(origin+dir*d,c,r);
+        if (dist<0.001) return vec3(0,0,1.0);
+        d += dist;
+    }
+    return vec3(1.0);
+}
+
+float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
 {
     float dmin = 0.001;
     float dmax = 20.0;
@@ -111,6 +110,9 @@ float cast_ray(vec3 origin, vec3 dir)
     {
         // float precis = 0.0005*d;
         float dist = map(origin+dir*d);
+        float dist_s = map_sphere(origin+dir*d,c,r);
+        if (dist < dist_s);
+        else dist = dist_s;
         if( dist<0.0001 || d>dmax ) break;
         d += dist;
     }
@@ -119,25 +121,47 @@ float cast_ray(vec3 origin, vec3 dir)
     return d;
 }
 //Perform the ray marching:
-vec3 rayMarch(vec3 camera, vec3 dir, float start, float end, float delta)
+vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
     float depth = start;
     vec3 light_pos = vec3(10*sin(time),-15.0,-10*cos(time));
     // vec3 light_pos = vec3(0.0,-20.0,0.0);
     vec3 color = vec3(1.0);
-    float d = cast_ray(camera, dir);
-    if (d>-1.0)
+    vec3 c = vec3(0,1.0,0);
+    float r = 0.5;
+    vec3 sky = vec3(0.2,0.5,0.85);
+    vec3 reflection = vec3(1.0);
+    // float d = cast_ray(camera, dir,c,r);
+
+    float dmin = 0.001;
+    float dmax = 20.0;
+    float d = dmin;
+    for(int i=0; i<256; i++)
     {
         vec3 pos = camera+dir*d;
-        vec3 normal = calc_norm(pos,delta);
-        vec3 light_dir = normalize(pos-light_pos);
-        float diff = dot(normal,light_dir);
+        float dist = map(pos);
+        float dist_s = map_sphere(pos,c,r);
+        if (dist > dist_s) dist = dist_s;
+        d += dist;
+        if(dist<0.0001 && d<dmax)
+        {
+            vec3 normal = water_norm(pos,delta);
+            if (dist == dist_s) normal = sphere_norm(pos,delta,c,r);
+            else {
+                reflection = trace_reflect(pos, dir, 0.01, normal, length(pos-camera),c,r);
+            }
+            vec3 light_dir = normalize(pos-light_pos);
+            float diff = dot(normal,light_dir);
 
-        float shade = diff*shadow(pos, light_dir, 0.1, length(pos-light_pos));
-        return color*shade;
+            float shade = diff*shadow(pos, light_dir, 0.1, length(pos-light_pos),c,r);
+            return color*reflection*shade;
+        }
     }
-    vec3 sky = vec3(0.2,0.5,0.85);
     return sky;
+
+    // if (d>-1.0)
+    // {
+    // }
 }
 
 void main()
@@ -146,12 +170,12 @@ void main()
     const float maxDist = 100;
     const float delta = 0.001; //Checks distance from current pos to object
 
-    vec3 sentCam = vec3(12,5,10);
+    // vec3 sentCam = vec3(12,5,10);
 
     vec2 resolution = vec2(600,600); //Same as the window res
-    vec3 viewDir = rayDirection(60, resolution, gl_FragCoord.xy);
+    vec3 viewDir = ray_dir(60, resolution, gl_FragCoord.xy);
     //gl_FragCoord contains the window-relative coordinates of the current fragment
-    mat4 viewToWorld = lookAT(sentCam, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
+    mat4 viewToWorld = look_at(sentCam, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
     vec3 worldDir = (viewToWorld * vec4(viewDir, 0.0)).xyz;
-    outColor = vec4(rayMarch(sentCam,worldDir,minDist,maxDist,delta),1.0);
+    outColor = vec4(ray_march(sentCam,worldDir,minDist,maxDist,delta),1.0);
 }
