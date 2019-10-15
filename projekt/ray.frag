@@ -27,13 +27,13 @@ float planeDist(vec3 p, float h)
 
 float map(vec3 p)
 {
-    // float displacement = sin(time+p.x) * sin(time+p.y) * sin(time+p.z);
+    float displacement = 0.3 * (sin(time+p.x)*sin(time+p.y)*sin(time+p.z));
     // float floater = cubeDist(p-vec3(0.0,1.5,0.0),vec3(0.5,0.5,0.5));
     // float floater = map_sphere(p,vec3(0.0,0.6,0.0),0.6);
     float plane = planeDist(p, 0.0);
     float bbox = cubeDist(p, vec3(3.0,1.0,3.0));
 
-    return max(plane,bbox);
+    return plane+displacement; //max(plane,bbox);
 }
 
 vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
@@ -47,9 +47,14 @@ vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
     ));
 }
 
-vec3 water_norm(vec3 point, float d)
+vec3 water_norm(vec3 p, float d)
 {
-    return vec3(0,1,0);
+    // return vec3(0,1,0);
+    return normalize(vec3(
+        map(vec3(p.x, p.y+d, p.z)) - map(vec3(p.x, p.y-d, p.z)),
+        map(vec3(p.x+d, p.y, p.z)) - map(vec3(p.x-d, p.y, p.z)),
+        map(vec3(p.x, p.y, p.z+d)) - map(vec3(p.x, p.y, p.z-d))
+    ));
 }
 //This is a copy of the gluLookAt function
 mat4 look_at(vec3 eye, vec3 center, vec3 up)
@@ -79,7 +84,7 @@ float shadow(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
     float soft = 1.0;
     for (float d=start; d<end;)
     {
-        float dist = map_sphere(origin+dir*d, vec3(0.0,0.6,0.0),0.5);
+        float dist = map_sphere(origin+dir*d,c,r);
         if (dist<0.001) return 0.0;
         soft = min(soft, k*dist/d);
         d += dist;
@@ -87,11 +92,8 @@ float shadow(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
     return soft;
 }
 
-vec3 trace_reflect(vec3 origin, vec3 in_dir, float start, vec3 normal, float end, vec3 c, float r)
+vec3 trace_reflect(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
 {
-    vec3 dir = reflect(normal,in_dir);
-    float k = 6;
-    float soft = 1.0;
     for (float d=start; d<end;)
     {
         float dist = map_sphere(origin+dir*d,c,r);
@@ -124,17 +126,17 @@ float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
 vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
     float depth = start;
-    vec3 light_pos = vec3(10*sin(time),-15.0,-10*cos(time));
-    // vec3 light_pos = vec3(0.0,-20.0,0.0);
+    // vec3 light_pos = vec3(10*sin(time),-15.0,-10*cos(time));
+    vec3 light_pos = vec3(-10.0,-15.0,-10.0);
     vec3 color = vec3(1.0);
-    vec3 c = vec3(0,1.0,0);
+    vec3 c = vec3(0,0.0,0);
     float r = 0.5;
     vec3 sky = vec3(0.2,0.5,0.85);
     vec3 reflection = vec3(1.0);
     // float d = cast_ray(camera, dir,c,r);
 
     float dmin = 0.001;
-    float dmax = 20.0;
+    float dmax = 30.0;
     float d = dmin;
     for(int i=0; i<256; i++)
     {
@@ -148,20 +150,16 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
             vec3 normal = water_norm(pos,delta);
             if (dist == dist_s) normal = sphere_norm(pos,delta,c,r);
             else {
-                reflection = trace_reflect(pos, dir, 0.01, normal, length(pos-camera),c,r);
+                vec3 ref_dir = normalize(reflect(normal,camera));
+                reflection = trace_reflect(pos, ref_dir, 0.1, length(pos-camera),c,r);
             }
             vec3 light_dir = normalize(pos-light_pos);
             float diff = dot(normal,light_dir);
-
             float shade = diff*shadow(pos, light_dir, 0.1, length(pos-light_pos),c,r);
-            return color*reflection*shade;
+            return color*reflection*diff;
         }
     }
     return sky;
-
-    // if (d>-1.0)
-    // {
-    // }
 }
 
 void main()
