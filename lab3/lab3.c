@@ -103,7 +103,7 @@ Material ballMt = { { 1.0, 1.0, 1.0, 1.0 }, { 1.0, 1.0, 1.0, 0.0 },
                 };
 
 
-enum {kNumBalls =16}; // Change as desired, max 16
+enum {kNumBalls =4}; // Change as desired, max 16
 
 //------------------------------Globals---------------------------------
 ModelTexturePair tableAndLegs, tableSurf;
@@ -225,12 +225,12 @@ void updateWorld()
 	{
 		vec3 dX, dP, dL, dO;
 		mat4 Rd;
-    float mu = 5.0;
-    tot_p += Norm(ball[i].P);
-    vec3 v_rel = VectorAdd(ball[i].v,CrossProduct(ball[i].omega,SetVector(0,-kBallSize,0)));
+        float mu = 0.5;
+        tot_p += Norm(ball[i].P);
+        vec3 v_rel = VectorAdd(ball[i].v,CrossProduct(ball[i].omega,SetVector(0,-kBallSize,0)));
 
 		vec3 F_mu = ScalarMult(v_rel,-mu);
-
+        ball[i].F = VectorAdd(ball[i].F,F_mu);
 		ball[i].T = CrossProduct(SetVector(0,-kBallSize,0), F_mu);
 
 		ball[i].v = ScalarMult(ball[i].P, 1.0/(ball[i].mass));
@@ -351,12 +351,12 @@ void init()
     }
 
     // TEST CASE 1
-		ball[0].mass = 3.0;
-    ball[0].X = SetVector(0, 0, 1.5);
+	// ball[0].mass = 3.0;
+    ball[0].X = SetVector(0.1, 0, 1.5);
 	ball[1].X = SetVector(0, 0, 1.0);
 	ball[2].X = SetVector(0, 0, 0.5);
     ball[3].X = SetVector(0, 0, 0);
-    ball[0].P = SetVector(0, 0, 1.00);
+    ball[0].P = SetVector(0, 0, 2.00);
 	ball[1].P = SetVector(0, 0, 0);
 	ball[2].P = SetVector(0, 0, 0);
     ball[3].P = SetVector(0, 0, 0);

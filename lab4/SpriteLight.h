@@ -28,6 +28,7 @@ typedef struct SpriteRec
 	TextureData *face;
 	FPoint speed;
 	GLfloat rotation;
+    GLfloat dogDistance;
 	struct SpriteRec *next;
 
 	// Add custom sprite data here as needed
