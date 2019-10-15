@@ -126,7 +126,7 @@ float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
 vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
     float depth = start;
-    // vec3 light_pos = vec3(10*sin(time),-15.0,-10*cos(time));
+    // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
     vec3 light_pos = vec3(-10.0,-15.0,-10.0);
     vec3 color = vec3(1.0);
     vec3 c = vec3(0,0.0,0);
