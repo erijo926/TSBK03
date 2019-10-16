@@ -7,8 +7,6 @@ uniform vec3 sentCam;
 
 #define M_PI 3.14159265358979323846
 
-//Distance function by Inigo Quilez
-//http://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
 float cubeDist(vec3 point, vec3 cube)
 {
     vec3 d = abs(point)-cube;
@@ -92,17 +90,6 @@ float shadow(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
     return soft;
 }
 
-vec3 trace_reflect(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
-{
-    for (float d=start; d<end;)
-    {
-        float dist = map_sphere(origin+dir*d,c,r);
-        if (dist<0.001) return vec3(0,0,1.0);
-        d += dist;
-    }
-    return vec3(1.0);
-}
-
 float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
 {
     float dmin = 0.001;
@@ -122,18 +109,46 @@ float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
     if(d>dmax) d=-1.0;
     return d;
 }
+
+vec3 trace_reflect(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
+{
+    for (float d=start; d<end;)
+    {
+        float dist = map_sphere(origin+dir*d,c,r);
+        if (dist<0.001) return vec3(origin.x,origin.y,origin.z);
+        d += dist;
+    }
+    return vec3(1.0);
+}
+
+vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r)
+{
+    vec3 total = vec3(pos.x,pos.y,pos.z);
+    vec3 l_dir = normalize(pos-lpos);
+    float diff = dot(n,l_dir);
+    return total*diff;
+}
+
+vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
+{
+    float refractive_i = 1.00029/1.33;
+    vec3 total = vec3(1.0);
+    vec3 ref_dir = normalize(reflect(n,cam));
+    vec3 l_dir = normalize(pos-lpos);
+    float diff = dot(n,l_dir);
+    vec3 ref = trace_reflect(pos,ref_dir,0.0,length(pos-cam),c,r);
+
+    return total*diff*(0.8*ref);
+}
+
 //Perform the ray marching:
 vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
-    float depth = start;
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
     vec3 light_pos = vec3(-10.0,-15.0,-10.0);
-    vec3 color = vec3(1.0);
+    vec3 color = vec3(0.0);
     vec3 c = vec3(0,0.0,0);
     float r = 0.5;
-    vec3 sky = vec3(0.2,0.5,0.85);
-    vec3 reflection = vec3(1.0);
-    // float d = cast_ray(camera, dir,c,r);
 
     float dmin = 0.001;
     float dmax = 30.0;
@@ -147,19 +162,18 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
         d += dist;
         if(dist<0.0001 && d<dmax)
         {
-            vec3 normal = water_norm(pos,delta);
-            if (dist == dist_s) normal = sphere_norm(pos,delta,c,r);
-            else {
-                vec3 ref_dir = normalize(reflect(normal,camera));
-                reflection = trace_reflect(pos, ref_dir, 0.1, length(pos-camera),c,r);
+            if (dist == dist_s) {
+                vec3 normal = sphere_norm(pos,delta,c,r);
+                return shade_ball(pos,light_pos,normal,c,r);
             }
-            vec3 light_dir = normalize(pos-light_pos);
-            float diff = dot(normal,light_dir);
-            float shade = diff*shadow(pos, light_dir, 0.1, length(pos-light_pos),c,r);
-            return color*reflection*diff;
+            else {
+                vec3 normal = water_norm(pos,delta);
+                return shade_water(pos,camera,light_pos,normal,c,r);
+            }
+            // return color;
         }
     }
-    return sky;
+    return vec3(0.2,0.5,0.85);
 }
 
 void main()
