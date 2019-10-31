@@ -65,7 +65,7 @@ void init(void)
     squareModel = LoadDataToModel(
 			square, NULL, squareTexCoord, NULL,
 			squareIndices, 4, 6);
-    glUniform3fv(glGetUniformLocation(program, "sentCam"), 1, camera);
+    glUniform3fv(glGetUniformLocation(program, "cam_pos"), 1, camera);
 }
 
 //Executes upon drag
@@ -91,7 +91,7 @@ void mouseDragged(int x, int y)
     camera[0] = 12.0+loc.x;
     camera[1] = 5.0+loc.y;
     camera[2] = 10.0+loc.z;
-    glUniform3fv(glGetUniformLocation(program, "sentCam"), 1, camera);
+    glUniform3fv(glGetUniformLocation(program, "cam_pos"), 1, camera);
     glutPostRedisplay();
 }
 
