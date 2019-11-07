@@ -48,7 +48,7 @@ int prevx = 0, prevy = 0;
 float px = 0, py = 0;
 float dist = 3;
 GLfloat camera[] = {12.0,5.0,10.0};
-GLfloat camDist = 3.0;
+GLfloat camDist = 15.0;
 
 void init(void)
 {
@@ -88,9 +88,9 @@ void mouseDragged(int x, int y)
                 camDist*sin(px*(M_PI/180)),
                 camDist*cos(py*(M_PI/180))*cos(px*(M_PI/180))};
 
-    camera[0] = 12.0+loc.x;
-    camera[1] = 5.0+loc.y;
-    camera[2] = 10.0+loc.z;
+    camera[0] = loc.x;
+    camera[1] = loc.y;
+    camera[2] = loc.z;
     glUniform3fv(glGetUniformLocation(program, "cam_pos"), 1, camera);
     glutPostRedisplay();
 }

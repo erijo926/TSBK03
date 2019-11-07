@@ -189,10 +189,10 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
 {
     vec3 refl = vec3(0.0);
     vec3 refr = vec3(0.0);
-    float refractive_i = 1.00029/1.33;
-    vec3 clr = vec3(1.0);
+    float refractive_i = 1.33/1.00029;
+    vec3 clr = normalize(vec3(63.0,127.0,191.0));
     vec3 total = vec3(0.1);
-    vec3 refl_dir = normalize(reflect(n,normalize(cam)));
+    vec3 refl_dir = normalize(reflect(n,cam));
     vec3 refr_dir = normalize(refract(normalize(pos-cam),n,refractive_i));
 
     vec3 l_dir = normalize(pos-lpos);
@@ -203,7 +203,7 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
     d = trace_ball(pos,refr_dir,0.0,length(pos-cam),c,r);
     if(d!=0.0) refr = shade_ball(pos+refr_dir*d,lpos,n,c,r);
 
-    float val = 0.8;
+    float val = 0.0;
     total += clr*diff*0.6+(val*refl)+((1.0-val)*refr);
     return total;
 }
@@ -214,10 +214,10 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
     vec3 light_pos = vec3(-10.0,-15.0,-10.0);
     vec3 color = vec3(0.0);
-    vec3 c = vec3(0,0.3,0);
+    vec3 c = vec3(0,0.0,0);
     float r = 0.5;
 
-    float dmin = 0.001;
+    float dmin = start;
     float dmax = 30.0;
     float d = dmin;
     for(int i=0; i<256; i++)
@@ -245,12 +245,11 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 
 void main()
 {
-    const float min_dist = 0;
+    const float min_dist = 0.001;
     const float max_dist = 100;
     const float delta = 0.001; //Checks distance from current pos to object
 
-    // vec3 cam_pos = vec3(12,5,10);
-
+    // vec3 cam_pos = vec3(12*sin(time),5,12*cos(time));
     vec2 resolution = vec2(600,600); //Same as the window res
     vec3 view_dir = ray_dir(60, resolution, gl_FragCoord.xy);
     //gl_FragCoord contains the window-relative coordinates of current fragment
