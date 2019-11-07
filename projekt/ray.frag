@@ -142,7 +142,7 @@ float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
     float d = dmin;
     for( int i=0; i<256; i++ )
     {
-        // float precis = 0.0005*d;
+        // float precision = 0.0005*d;
         float dist = map(origin+dir*d);
         float dist_s = map_sphere(origin+dir*d,c,r);
         if (dist < dist_s);
@@ -193,7 +193,8 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
     vec3 total = vec3(0.1);
     vec3 refl_dir = normalize(reflect(n,cam));
-    vec3 refr_dir = normalize(refract(normalize(pos-cam),n,refractive_i));
+    vec3 inc_dir = normalize(pos-cam);
+    vec3 refr_dir = normalize(refract(inc_dir,n,refractive_i));
 
     vec3 l_dir = normalize(pos-lpos);
     float diff = dot(n,l_dir);
@@ -250,6 +251,7 @@ void main()
     const float delta = 0.001; //Checks distance from current pos to object
 
     // vec3 cam_pos = vec3(12*sin(time),5,12*cos(time));
+    vec3 cam_pos = vec3(15,5,0);
     vec2 resolution = vec2(600,600); //Same as the window res
     vec3 view_dir = ray_dir(60, resolution, gl_FragCoord.xy);
     //gl_FragCoord contains the window-relative coordinates of current fragment
