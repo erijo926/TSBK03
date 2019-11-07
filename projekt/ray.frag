@@ -238,7 +238,6 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
                 vec3 normal = water_norm(pos,delta);
                 return shade_water(pos,camera,light_pos,normal,c,r);
             }
-            // return color;
         }
     }
     return vec3(0.2,0.5,0.85);
@@ -250,8 +249,8 @@ void main()
     const float max_dist = 100;
     const float delta = 0.001; //Checks distance from current pos to object
 
-    // vec3 cam_pos = vec3(12*sin(time),5,12*cos(time));
-    vec3 cam_pos = vec3(15,5,0);
+    vec3 cam_pos = vec3(15*sin(time),5,15*cos(time));
+    // vec3 cam_pos = vec3(15,5,0);
     vec2 resolution = vec2(600,600); //Same as the window res
     vec3 view_dir = ray_dir(60, resolution, gl_FragCoord.xy);
     //gl_FragCoord contains the window-relative coordinates of current fragment
