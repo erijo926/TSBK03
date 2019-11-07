@@ -60,7 +60,7 @@ float ave_dist(vec3 p)
     for ( int i=0; i < octaves; i++ )
     {
         p = (p.yzx + p.zyx*vec3(1,-1,1))/sqrt(2.0);
-        f  = f*1.0+abs(random(vec2(p.x,p.y),1.0)-.5)*2.0;
+        f  = f*1.0+abs(random(vec2(p.x,p.z),1.0)-.5)*2.0;
         p *= 2.0;
     }
     f /= exp2(float(octaves));
@@ -201,7 +201,7 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
     if(d!=0.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r);
 
     d = trace_ball(pos,refr_dir,0.0,length(pos-cam),c,r);
-    if(d!=0.0) refr = shade_ball(pos+refr_dir*d,lpos,n,c,r);
+    if(d!=0.0) refr = shade_ball(pos,lpos,n,c,r);
 
     float val = 0.8;
     total += clr*diff*0.6+(val*refl)+((1.0-val)*refr);
