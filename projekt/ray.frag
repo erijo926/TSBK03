@@ -33,21 +33,21 @@ float wave_dist(vec3 p)
     vec2 point = vec2(p.x,p.z);
     int wc = 2;
     float d = 0.0;
-    float v = 0.1; //+random(point,1.0); // hastighet
+    float v = 0.4; //+random(point,1.0); // hastighet
     vec2 c = vec2(0.0,0.0);
-    // vec2 r = (-1)*(point-c)/(length(point-c)); // cirkelvåg
-    vec2 r = vec2(0.5,0.1);
+    vec2 r = (-1)*(point-c)/(length(point-c)); // cirkelvåg
+    // vec2 r = vec2(0.5,0.1);
     vec2 r2 = vec2(0.7,-0.3);
     vec2 r3 = vec2(-0.3,0.8);
-    float a = 0.2; // +random(point,2.0); // amplitud
-    float L = 1.0; // +random(point,5.0);
+    float a = 0.3; // +random(point,2.0); // amplitud
+    float L = 0.3; // +random(point,5.0);
     float w = 2*M_PI/L; // vinkelfrek=2pi/våglängd
     for (int i=0; i < wc; i++)
     {
     }
     d += 2*a*pow(sin(dot(r,point)*w+time*(v*w))/2,2.5);
-    d += 2*0.3*pow(sin(dot(r2,point)*w+time*(v*4*w/2.0))/2,2.5);
-    d += 2*0.1*pow(sin(dot(r3,point)*w+time*(v*10*w))/2,2.5);
+    // d += 2*0.3*pow(sin(dot(r2,point)*w+time*(v*4*w/2.0))/2,2.5);
+    // d += 2*0.1*pow(sin(dot(r3,point)*w+time*(v*10*w))/2,2.5);
     return d;
 }
 
@@ -76,9 +76,9 @@ float plane_dist(vec3 p, float h)
 float map(vec3 p)
 {
     float wave = wave_dist(p);
-    float plane = (p.y-wave);
+    float plane = (p.y);
     float bbox = cube_dist(p, vec3(3.0,0.5,3.0));
-    return plane;
+    return max(bbox,plane);
 }
 
 vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
@@ -192,8 +192,8 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
     float refractive_i = 1.00029/1.33;
     vec3 clr = vec3(1.0);
     vec3 total = vec3(0.1);
-    vec3 refl_dir = normalize(reflect(n,cam));
-    vec3 refr_dir = normalize(refract(cam,n,refractive_i));
+    vec3 refl_dir = normalize(reflect(n,normalize(cam)));
+    vec3 refr_dir = normalize(refract(normalize(pos-cam),n,refractive_i));
 
     vec3 l_dir = normalize(pos-lpos);
     float diff = dot(n,l_dir);
@@ -201,7 +201,7 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
     if(d!=0.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r);
 
     d = trace_ball(pos,refr_dir,0.0,length(pos-cam),c,r);
-    if(d!=0.0) refr = shade_ball(pos,lpos,n,c,r);
+    if(d!=0.0) refr = shade_ball(pos+refr_dir*d,lpos,n,c,r);
 
     float val = 0.8;
     total += clr*diff*0.6+(val*refl)+((1.0-val)*refr);
