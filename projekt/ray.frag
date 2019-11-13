@@ -79,6 +79,7 @@ float map(vec3 p)
     float plane = (p.y);
     float bbox = cube_dist(p, vec3(3.0,0.5,3.0));
     return max(bbox,plane);
+    // return plane;
 }
 
 vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
@@ -143,24 +144,16 @@ float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
     for( int i=0; i<256; i++ )
     {
         // float precision = 0.0005*d;
-        float dist = map(origin+dir*d);
-        float dist_s = map_sphere(origin+dir*d,c,r);
-        if (dist < dist_s);
-        else dist = dist_s;
+        // float dist = map(origin+dir*d);
+        float dist = map_sphere(origin+dir*d,c,r);
+        // if (dist < dist_s);
+        // else dist = dist_s;
         if( dist<0.0001 || d>dmax ) break;
         d += dist;
     }
 
     if(d>dmax) d=-1.0;
     return d;
-}
-
-vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r)
-{
-    vec3 total = vec3(pos.x,pos.y,pos.z);
-    vec3 l_dir = normalize(pos-lpos);
-    float diff = dot(n,l_dir);
-    return total*diff;
 }
 
 float trace_ball(vec3 orig, vec3 dir, float start, float end, vec3 c, float r)
@@ -185,27 +178,40 @@ float trace_floor(vec3 orig, vec3 dir, float start, float end)
     return 0.0;
 }
 
-vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
+vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r)
+{
+    // vec3 total = vec3(pos.x,pos.y,pos.z);
+    vec3 total = vec3(1.0,0,0);
+    vec3 l_dir = normalize(pos-lpos);
+    float diff = dot(n,l_dir);
+    return total; //*diff;
+}
+
+vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_dir)
 {
     vec3 refl = vec3(0.0);
     vec3 refr = vec3(0.0);
     float refractive_i = 1.33/1.00029;
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
-    vec3 total = vec3(0.1);
-    vec3 refl_dir = normalize(reflect(n,cam));
+    vec3 total = vec3(0.0);
+
     vec3 inc_dir = normalize(pos-cam);
-    vec3 refr_dir = normalize(refract(inc_dir,n,refractive_i));
+    vec3 refl_dir = normalize(reflect(w_dir,n));
+    vec3 refr_dir = normalize(refract(w_dir,n,refractive_i));
 
     vec3 l_dir = normalize(pos-lpos);
     float diff = dot(n,l_dir);
-    float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
-    if(d!=0.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r);
+    // float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
+    float d = cast_ray(pos,refl_dir,c,r);
+    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r);
 
-    d = trace_ball(pos,refr_dir,0.0,length(pos-cam),c,r);
-    if(d!=0.0) refr = shade_ball(pos+refr_dir*d,lpos,n,c,r);
+    // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
+    float t = cast_ray(pos,refr_dir,c,r);
+    if(t!=-1.0) refr = shade_ball(pos+refr_dir*t,lpos,n,c,r);
 
     float val = 0.0;
-    total += clr*diff*0.6+(val*refl)+((1.0-val)*refr);
+    total += clr*diff+(val*refl)+((1.0-val)*refr);
+    // total += normalize(refl_dir)+(val*refl)+((1.0-val)*refr);
     return total;
 }
 
@@ -213,17 +219,17 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r)
 vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
-    vec3 light_pos = vec3(-10.0,-15.0,-10.0);
+    vec3 light_pos = vec3(-10.0,0.0,0.0);
     vec3 color = vec3(0.0);
     vec3 c = vec3(0,0.0,0);
     float r = 0.5;
-
+    vec3 pos = vec3(0.0);
     float dmin = start;
     float dmax = 30.0;
     float d = dmin;
     for(int i=0; i<256; i++)
     {
-        vec3 pos = camera+dir*d;
+        pos = camera+dir*d;
         float dist = map(pos);
         float dist_s = map_sphere(pos,c,r);
         if (dist > dist_s) dist = dist_s;
@@ -236,7 +242,7 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
             }
             else {
                 vec3 normal = water_norm(pos,delta);
-                return shade_water(pos,camera,light_pos,normal,c,r);
+                return shade_water(pos,camera,light_pos,normal,c,r,dir);
             }
         }
     }
@@ -249,7 +255,7 @@ void main()
     const float max_dist = 100;
     const float delta = 0.001; //Checks distance from current pos to object
 
-    vec3 cam_pos = vec3(15*sin(time),5,15*cos(time));
+    vec3 cam_pos = vec3(5*sin(time),3,5*cos(time));
     // vec3 cam_pos = vec3(15,5,0);
     vec2 resolution = vec2(600,600); //Same as the window res
     vec3 view_dir = ray_dir(60, resolution, gl_FragCoord.xy);
