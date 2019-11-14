@@ -14,7 +14,10 @@ float cube_dist(vec3 point, vec3 cube)
 
 float map_sphere(vec3 point, vec3 c, float r)
 {
-    return length(point-c)-r;
+    vec3 cube = vec3(0.5);
+    vec3 d = abs(point)-cube;
+    return min(max(d.x, max(d.y, d.z)), 0.0)+length(max(d, 0.0));
+    // return length(point-c)-r;
 }
 
 float PHI = 1.61803398874989484820459 * 00000.1; // Golden Ratio
@@ -183,7 +186,7 @@ vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r)
     // vec3 total = vec3(1.0,0,0);
     vec3 l_dir = normalize(pos-lpos);
     float diff = dot(n,l_dir);
-    return total; //*diff;
+    return pos; //*diff;
 }
 
 vec3 test_refr(vec3 inc_dir, vec3 n, float index)
@@ -208,7 +211,6 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     float refractive_i = 1.33/1.00029;
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
     vec3 total = vec3(0.0);
-    // w_dir = normalize(w_dir);
     vec3 inc_dir = normalize(pos-cam);
     vec3 refl_dir = normalize(test_refl(w_dir,n));
     vec3 refr_dir = normalize(test_refr(w_dir,n,refractive_i));
@@ -217,14 +219,14 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     float diff = dot(n,l_dir);
     // float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
     float d = cast_ray(pos,refl_dir,c,r);
-    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r);
+    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,w_dir,refl_dir,c,r);
 
     // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
     float t = cast_ray(pos,refr_dir,c,r);
     if(t!=-1.0) refr = shade_ball(pos+refr_dir*t,lpos,n,c,r);
     // else if (t==-1.0) refr = vec3(1.0,0,0);
 
-    float val = 1.0;
+    float val = .0;
     // total += clr*diff+(val*refl)+((1.0-val)*refr);
     total += clr+(val*refl)+((1.0-val)*refr);
     return total;
