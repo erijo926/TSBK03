@@ -35,17 +35,16 @@ float wave_dist(vec3 p)
     float d = 0.0;
     float v = 0.4; //+random(point,1.0); // hastighet
     vec2 c = vec2(0.0,0.0);
-    vec2 r = (-1)*(point-c)/(length(point-c)); // cirkelvåg
-    // vec2 r = vec2(0.5,0.1);
-    vec2 r2 = vec2(0.7,-0.3);
+    vec2 r = vec2(0.1,-0.5);
+
+    // vec2 r = (-1)*(point-c)/(length(point-c)); // cirkelvåg
+    vec2 r2 = vec2(-0.7,0.3);
     vec2 r3 = vec2(-0.3,0.8);
-    float a = 0.3; // +random(point,2.0); // amplitud
-    float L = 0.3; // +random(point,5.0);
+
+    float a = 0.2; // +random(point,2.0); // amplitud
+    float L = 1.3; // +random(point,5.0);
     float w = 2*M_PI/L; // vinkelfrek=2pi/våglängd
-    for (int i=0; i < wc; i++)
-    {
-    }
-    d += 2*a*pow(sin(dot(r,point)*w+time*(v*w))/2,2.5);
+    d += 2*a*pow(sin(dot(r,point)*w+time*(v*w))/2,2);
     // d += 2*0.3*pow(sin(dot(r2,point)*w+time*(v*4*w/2.0))/2,2.5);
     // d += 2*0.1*pow(sin(dot(r3,point)*w+time*(v*10*w))/2,2.5);
     return d;
@@ -78,16 +77,16 @@ float map(vec3 p)
     float wave = wave_dist(p);
     float plane = (p.y);
     float bbox = cube_dist(p, vec3(3.0,0.5,3.0));
-    return max(bbox,plane);
-    // return plane;
+    // return max(bbox,plane);
+    return plane;
 }
 
 vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
 {
     return normalize(vec3(
-        map_sphere(vec3(p.x+d, p.y, p.z),c,r) - map_sphere(vec3(p.x-d, p.y, p.z),c,r),
-        map_sphere(vec3(p.x, p.y+d, p.z),c,r) - map_sphere(vec3(p.x, p.y-d, p.z),c,r),
-        map_sphere(vec3(p.x, p.y, p.z+d),c,r) - map_sphere(vec3(p.x, p.y, p.z-d),c,r)
+        map_sphere(vec3(p.x+d,p.y,p.z),c,r)-map_sphere(vec3(p.x-d,p.y,p.z),c,r),
+        map_sphere(vec3(p.x,p.y+d,p.z),c,r)-map_sphere(vec3(p.x,p.y-d,p.z),c,r),
+        map_sphere(vec3(p.x,p.y,p.z+d),c,r)-map_sphere(vec3(p.x,p.y,p.z-d),c,r)
     ));
 }
 
@@ -139,7 +138,7 @@ float shadow(vec3 origin, vec3 dir, float start, float end, vec3 c, float r)
 float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
 {
     float dmin = 0.001;
-    float dmax = 20.0;
+    float dmax = 10.0;
     float d = dmin;
     for( int i=0; i<256; i++ )
     {
@@ -180,13 +179,28 @@ float trace_floor(vec3 orig, vec3 dir, float start, float end)
 
 vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r)
 {
-    // vec3 total = vec3(pos.x,pos.y,pos.z);
-    vec3 total = vec3(1.0,0,0);
+    vec3 total = vec3(pos.x,pos.y,pos.z);
+    // vec3 total = vec3(1.0,0,0);
     vec3 l_dir = normalize(pos-lpos);
     float diff = dot(n,l_dir);
     return total; //*diff;
 }
 
+vec3 test_refr(vec3 inc_dir, vec3 n, float index)
+{
+    float ind = 1.00029/1.33;
+    float sina = sqrt(1-pow(dot(inc_dir,n),2));
+    float sinb = ind*sqrt(1-pow((dot(inc_dir,n)),2));
+    float cosb = sqrt(1-pow(sinb,2));
+    vec3 B = (inc_dir-abs(dot(inc_dir,n))*n)/sqrt(1-pow(dot(inc_dir,n),2));
+    vec3 R = B*sinb-n*cosb;
+    return R;
+}
+
+vec3 test_refl(vec3 i_dir, vec3 n)
+{
+    return i_dir-2.0*dot(i_dir,n)*n;
+}
 vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_dir)
 {
     vec3 refl = vec3(0.0);
@@ -194,10 +208,10 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     float refractive_i = 1.33/1.00029;
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
     vec3 total = vec3(0.0);
-
+    // w_dir = normalize(w_dir);
     vec3 inc_dir = normalize(pos-cam);
-    vec3 refl_dir = normalize(reflect(w_dir,n));
-    vec3 refr_dir = normalize(refract(w_dir,n,refractive_i));
+    vec3 refl_dir = normalize(test_refl(w_dir,n));
+    vec3 refr_dir = normalize(test_refr(w_dir,n,refractive_i));
 
     vec3 l_dir = normalize(pos-lpos);
     float diff = dot(n,l_dir);
@@ -208,10 +222,11 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
     float t = cast_ray(pos,refr_dir,c,r);
     if(t!=-1.0) refr = shade_ball(pos+refr_dir*t,lpos,n,c,r);
+    // else if (t==-1.0) refr = vec3(1.0,0,0);
 
-    float val = 0.0;
-    total += clr*diff+(val*refl)+((1.0-val)*refr);
-    // total += normalize(refl_dir)+(val*refl)+((1.0-val)*refr);
+    float val = 1.0;
+    // total += clr*diff+(val*refl)+((1.0-val)*refr);
+    total += clr+(val*refl)+((1.0-val)*refr);
     return total;
 }
 
@@ -255,7 +270,7 @@ void main()
     const float max_dist = 100;
     const float delta = 0.001; //Checks distance from current pos to object
 
-    vec3 cam_pos = vec3(5*sin(time),3,5*cos(time));
+    // vec3 cam_pos = vec3(5*sin(time),3,5*cos(time));
     // vec3 cam_pos = vec3(15,5,0);
     vec2 resolution = vec2(600,600); //Same as the window res
     vec3 view_dir = ray_dir(60, resolution, gl_FragCoord.xy);
