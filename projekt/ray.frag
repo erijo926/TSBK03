@@ -14,10 +14,10 @@ float cube_dist(vec3 point, vec3 cube)
 
 float map_sphere(vec3 point, vec3 c, float r)
 {
-    vec3 cube = vec3(0.5);
-    vec3 d = abs(point)-cube;
-    return min(max(d.x, max(d.y, d.z)), 0.0)+length(max(d, 0.0));
-    // return length(point-c)-r;
+    // vec3 cube = vec3(0.5);
+    // vec3 d = abs(point)-cube;
+    // return min(max(d.x, max(d.y, d.z)), 0.0)+length(max(d, 0.0));
+    return length(point-c)-r;
 }
 
 float PHI = 1.61803398874989484820459 * 00000.1; // Golden Ratio
@@ -180,15 +180,6 @@ float trace_floor(vec3 orig, vec3 dir, float start, float end)
     return 0.0;
 }
 
-vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r)
-{
-    vec3 total = vec3(pos.x,pos.y,pos.z);
-    // vec3 total = vec3(1.0,0,0);
-    vec3 l_dir = normalize(pos-lpos);
-    float diff = dot(n,l_dir);
-    return pos; //*diff;
-}
-
 vec3 test_refr(vec3 inc_dir, vec3 n, float index)
 {
     float ind = 1.00029/1.33;
@@ -204,31 +195,64 @@ vec3 test_refl(vec3 i_dir, vec3 n)
 {
     return i_dir-2.0*dot(i_dir,n)*n;
 }
+
+vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_dir)
+{
+    float diff, specular, shade;
+    // vec3 clr = pos;
+    vec3 clr = vec3(1.0,0,0);
+    vec3 ldir = normalize(pos-lpos);
+    vec3 r_spec = reflect(ldir, n);
+    vec3 v = normalize(w_dir); // View direction
+    specular = dot(r_spec, v);
+    if (specular > 0.0) specular = 1.0*pow(specular, 10.0);
+    else specular = 0.0;
+
+    diff = dot(n,ldir);
+    shade = 0.7*diff+1.0*specular;
+
+    return vec3(shade); //*diff;
+}
+
 vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_dir)
 {
-    vec3 refl = vec3(0.0);
-    vec3 refr = vec3(0.0);
+    float diff, specular, shade;
+    vec3 total = vec3(0.0);
+
+    vec3 refl, refr;
+    // vec3 refr = vec3(0.0);
     float refractive_i = 1.33/1.00029;
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
-    vec3 total = vec3(0.0);
     vec3 inc_dir = normalize(pos-cam);
-    vec3 refl_dir = normalize(test_refl(w_dir,n));
+    vec3 refl_dir = normalize(test_refl(inc_dir,n));
     vec3 refr_dir = normalize(test_refr(w_dir,n,refractive_i));
 
-    vec3 l_dir = normalize(pos-lpos);
-    float diff = dot(n,l_dir);
     // float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
     float d = cast_ray(pos,refl_dir,c,r);
-    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,w_dir,refl_dir,c,r);
+    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,w_dir,refl_dir,c,r,w_dir);
 
     // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
     float t = cast_ray(pos,refr_dir,c,r);
-    if(t!=-1.0) refr = shade_ball(pos+refr_dir*t,lpos,n,c,r);
+    if(t!=-1.0) refr = shade_ball(pos+refr_dir*t,lpos,n,c,r,w_dir);
     // else if (t==-1.0) refr = vec3(1.0,0,0);
 
-    float val = .0;
-    // total += clr*diff+(val*refl)+((1.0-val)*refr);
-    total += clr+(val*refl)+((1.0-val)*refr);
+    // Diffuse
+    vec3 ldir = normalize(pos-lpos);
+    diff = dot(n,ldir);
+
+    // Specular
+    vec3 r_spec = reflect(-lpos, n);
+    vec3 v = normalize(w_dir); // View direction
+    specular = dot(r_spec, v);
+    if (specular > 0.0)
+        specular = 1.5 * pow(specular, 10.0);
+
+    specular = max(specular, 0.0);
+    shade = 0.7*diff+.0*specular;
+
+    float val = 1.0;
+    total += clr*shade;
+    // total += clr*shade+(val*refl)+((1.0-val)*refr);
     return total;
 }
 
@@ -236,7 +260,7 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
 vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
-    vec3 light_pos = vec3(-10.0,0.0,0.0);
+    vec3 light_pos = vec3(-10.0,-10.0,0.0);
     vec3 color = vec3(0.0);
     vec3 c = vec3(0,0.0,0);
     float r = 0.5;
@@ -255,7 +279,7 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
         {
             if (dist == dist_s) {
                 vec3 normal = sphere_norm(pos,delta,c,r);
-                return shade_ball(pos,light_pos,normal,c,r);
+                return shade_ball(pos,light_pos,normal,c,r,dir);
             }
             else {
                 vec3 normal = water_norm(pos,delta);
