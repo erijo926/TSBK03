@@ -145,11 +145,7 @@ float cast_ray(vec3 origin, vec3 dir, vec3 c, float r)
     float d = dmin;
     for( int i=0; i<256; i++ )
     {
-        // float precision = 0.0005*d;
-        // float dist = map(origin+dir*d);
         float dist = map_sphere(origin+dir*d,c,r);
-        // if (dist < dist_s);
-        // else dist = dist_s;
         if( dist<0.0001 || d>dmax ) break;
         d += dist;
     }
@@ -205,31 +201,31 @@ vec3 shade_ball(vec3 pos, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_dir)
     vec3 r_spec = reflect(ldir, n);
     vec3 v = normalize(w_dir); // View direction
     specular = dot(r_spec, v);
-    if (specular > 0.0) specular = 1.0*pow(specular, 10.0);
-    else specular = 0.0;
-
+    if (specular > 0.0) specular = 1.5*pow(specular, 10.0);
+    specular = max(specular,0.0);
     diff = dot(n,ldir);
-    shade = 0.7*diff+1.0*specular;
+    shade = 0.7*diff+0.3*specular;
 
-    return vec3(shade); //*diff;
+    return clr*shade;
 }
 
 vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_dir)
 {
-    float diff, specular, shade;
+    float specular, shade;
     vec3 total = vec3(0.0);
 
-    vec3 refl, refr;
-    // vec3 refr = vec3(0.0);
+    // vec3 refl, refr;
+    vec3 refr = vec3(0.0);
+    vec3 refl = vec3(0.0);
     float refractive_i = 1.33/1.00029;
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
     vec3 inc_dir = normalize(pos-cam);
     vec3 refl_dir = normalize(test_refl(inc_dir,n));
-    vec3 refr_dir = normalize(test_refr(w_dir,n,refractive_i));
+    vec3 refr_dir = normalize(test_refr(inc_dir,n,refractive_i));
 
     // float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
     float d = cast_ray(pos,refl_dir,c,r);
-    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,w_dir,refl_dir,c,r,w_dir);
+    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r,w_dir);
 
     // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
     float t = cast_ray(pos,refr_dir,c,r);
@@ -238,21 +234,20 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
 
     // Diffuse
     vec3 ldir = normalize(pos-lpos);
-    diff = dot(n,ldir);
+    float diff = dot(n,ldir);
 
     // Specular
-    vec3 r_spec = reflect(-lpos, n);
-    vec3 v = normalize(w_dir); // View direction
+    vec3 r_spec = test_refl(ldir, n);
+    vec3 v = normalize(inc_dir); // View direction
     specular = dot(r_spec, v);
     if (specular > 0.0)
         specular = 1.5 * pow(specular, 10.0);
-
     specular = max(specular, 0.0);
-    shade = 0.7*diff+.0*specular;
 
+    shade = 0.7*diff+0.3*specular;
     float val = 1.0;
-    total += clr*shade;
-    // total += clr*shade+(val*refl)+((1.0-val)*refr);
+    // total += clr*shade+refl;
+    total += clr*shade+(val*refl)+((1.0-val)*refr);
     return total;
 }
 
@@ -260,7 +255,7 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
 vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 {
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
-    vec3 light_pos = vec3(-10.0,-10.0,0.0);
+    vec3 light_pos = vec3(-15.0,-20.0,-0.0);
     vec3 color = vec3(0.0);
     vec3 c = vec3(0,0.0,0);
     float r = 0.5;
@@ -287,7 +282,7 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
             }
         }
     }
-    return vec3(0.2,0.5,0.85);
+    return vec3(0.2,0.5,0.6);
 }
 
 void main()

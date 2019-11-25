@@ -89,7 +89,7 @@ void mouseDragged(int x, int y)
                 camDist*cos(py*(M_PI/180))*cos(px*(M_PI/180))};
 
     camera[0] = loc.x;
-    camera[1] = 5; // loc.y
+    camera[1] = loc.y; // loc.y
     camera[2] = loc.z;
     glUniform3fv(glGetUniformLocation(program, "cam_pos"), 1, camera);
     glutPostRedisplay();
