@@ -225,11 +225,11 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
 
     // float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
     float d = cast_ray(pos,refl_dir,c,r);
-    if(d!=-1.0) refl = shade_ball(pos+refl_dir*d,lpos,n,c,r,w_dir);
+    if(d!=-1.0) refl += shade_ball(pos+refl_dir*d,lpos,n,c,r,w_dir);
 
     // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
     float t = cast_ray(pos,refr_dir,c,r);
-    if(t!=-1.0) refr = shade_ball(pos+refr_dir*t,lpos,n,c,r,w_dir);
+    if(t!=-1.0) refr += shade_ball(pos+refr_dir*t,lpos,n,c,r,w_dir);
     // else if (t==-1.0) refr = vec3(1.0,0,0);
 
     // Diffuse
@@ -246,8 +246,8 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
 
     shade = 0.7*diff+0.3*specular;
     float val = 1.0;
-    // total += clr*shade+refl;
-    total += clr*shade+(val*refl)+((1.0-val)*refr);
+    total += normalize(cam)*shade+refl; //*shade+refl;
+    // total += clr*shade+(val*refl)+((1.0-val)*refr);
     return total;
 }
 
