@@ -58,7 +58,7 @@ void init(void)
     printError("GL inits");
 
     // Load and compile shader
-    program = loadShaders("ray.vert", "ray0.frag");
+    program = loadShaders("ray.vert", "ray.frag");
     glUseProgram(program);
     printError("init shader");
 

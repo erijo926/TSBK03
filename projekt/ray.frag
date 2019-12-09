@@ -20,54 +20,55 @@ float map_sphere(vec3 point, vec3 c, float r)
     return length(point-c)-r;
 }
 
-float PHI = 1.61803398874989484820459 * 00000.1; // Golden Ratio
-float PI  = 3.14159265358979323846264 * 00000.1; // PI
-float SQ2 = 1.41421356237309504880169 * 10000.0; // Square Root of Two
-
-float random(vec2 coordinate,float seed){
-    float max_val = 0.5;
-    float min_val = -1.0;
-    float temp = fract(tan(distance(coordinate*(seed+PHI), vec2(PHI, PI)))*SQ2);
-    return floor(temp*(max_val-min_val+1)+min_val);
+// Noise generation functions (by iq)
+// https://thebookofshaders.com/10/
+float random(vec2 p)
+{
+    return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);
 }
 
-float wave_dist(vec3 p)
+float noise(in vec2 p)
 {
-    vec2 point = vec2(p.x,p.z);
-    int wc = 2;
-    float d = 0.0;
-    float v = 0.4; //+random(point,1.0); // hastighet
-    vec2 c = vec2(0.0,0.0);
-    vec2 r = vec2(0.1,-0.5);
-
-    // vec2 r = (-1)*(point-c)/(length(point-c)); // cirkelvåg
-    vec2 r2 = vec2(-0.7,0.3);
-    vec2 r3 = vec2(-0.3,0.8);
-
-    float a = 0.2; // +random(point,2.0); // amplitud
-    float L = 1.3; // +random(point,5.0);
-    float w = 2*M_PI/L; // vinkelfrek=2pi/våglängd
-    d += 2*a*pow(sin(dot(r,point)*w+time*(v*w))/2,2);
-    // d += 2*0.3*pow(sin(dot(r2,point)*w+time*(v*4*w/2.0))/2,2.5);
-    // d += 2*0.1*pow(sin(dot(r3,point)*w+time*(v*10*w))/2,2.5);
-    return d;
+    vec2 int_coord = floor(p);
+    vec2 fract_coord = fract(p);
+    // fract_coord = fract_coord*fract_coord*(3.0-2.0*fract_coord);
+    return 1.0+2.0*mix( mix( random( int_coord + vec2(0.0,0.0) ),
+                     random( int_coord + vec2(1.0,0.0) ), fract_coord.x),
+                mix( random( int_coord + vec2(0.0,1.0) ),
+                     random( int_coord + vec2(1.0,1.0) ), fract_coord.x), fract_coord.y);
 }
 
-float ave_dist(vec3 p)
+
+float wave_peak(vec2 p, float peak)
 {
-    p *= .2*vec3(1.0);
-    const int octaves = 4;
-    float f = 0.0;
-    p += time*vec3(0,.1,.1);
-    for ( int i=0; i < octaves; i++ )
+    // peak should denote the "sharpness" of the wave crest
+    p += noise(p);
+    vec2 wave = 1.0-abs(sin(p));
+    float q = pow(wave.x*wave.y,peak);
+    return q;
+}
+
+float wave_dist(vec3 p, int level)
+{
+    vec2 point = p.xz;
+    float a = .6; // amplitude
+    float w = 0.2; // freq=2pi/wavelength. Has to be low -> large wavelength
+    float v = 0.9; // wave speed
+    float peak = .6;
+
+    float d, h = 0.0; // d = tot. dist, h = wave height
+    mat2 R = mat2(1,-1,1,1)*(sqrt(2)/2);
+    for(int i = 0; i < level; i++)
     {
-        p = (p.yzx + p.zyx*vec3(1,-1,1))/sqrt(2.0);
-        f  = f*1.0+abs(random(vec2(p.x,p.z),1.0)-.5)*2.0;
-        p *= 2.0;
-    }
-    f /= exp2(float(octaves));
+        h = wave_peak((point+time*v)*w, peak);
+        h += wave_peak((point-time*v)*w, peak);
+        d = h*a;
 
-    return (.5-f)*1.0;
+        point *= R;
+        w *= 2.0;
+        a *= 0.1;
+    }
+    return p.y-d;
 }
 
 float plane_dist(vec3 p, float h)
@@ -77,11 +78,10 @@ float plane_dist(vec3 p, float h)
 
 float map(vec3 p)
 {
-    float wave = wave_dist(p);
-    float plane = (p.y);
-    float bbox = cube_dist(p, vec3(3.0,0.5,3.0));
-    // return max(bbox,plane);
-    return plane;
+    float water = wave_dist(p, 1);
+    // float water = map_water(p, 2);
+    float cube = cube_dist(p, vec3(3.0, 1.0, 3.0));
+    return max(water,cube);
 }
 
 vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
