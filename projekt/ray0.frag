@@ -57,13 +57,15 @@ float mapWater(vec3 p, int steps) {
     float d, h = 0.0;
     const float SEA_SPEED = 0.8;
     const mat2 octave_m = mat2(1.6,1.2,-1.2,1.6);
-    float seaTime = (1.0 + time * SEA_SPEED);
+    float seaTime = time;
+    d = sea_octave((uv+seaTime)*freq,choppy);
     for(int i = 0; i < steps; i++)
     {
-    	d = sea_octave((uv+seaTime)*freq,choppy);
     	d += sea_octave((uv-seaTime)*freq,choppy);
         h += d * amp;
-    	uv *= octave_m; freq *= 1.9; amp *= 0.22;
+    	uv *= octave_m;
+        freq *= 1.9;
+        amp *= 0.22;
         choppy = mix(choppy,1.0,0.2);
     }
     return p.y - h;
@@ -96,12 +98,19 @@ float plane_dist(vec3 p, float h)
     return p.y-h;
 }
 
+float cube_dist(vec3 point, vec3 cube)
+{
+    vec3 d = abs(point)-cube;
+    return min(max(d.x, max(d.y, d.z)), 0.0)+length(max(d, 0.0));
+}
+
 float map(vec3 p)
 {
     // float wave = wave_dist(p);
     // float plane = (p.y-wave);
-    float water = mapWater(p, 256);
-    return water;
+    float water = mapWater(p, 4);
+    float cube = cube_dist(p, vec3(3.0, 2.0, 3.0));
+    return max(water,cube);
 }
 
 vec3 water_norm(vec3 p, float d)
