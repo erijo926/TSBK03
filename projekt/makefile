@@ -14,10 +14,13 @@ ifeq ($(UNAME_S),Linux)
 	glflags = -lXt -lX11 -lGL -lm
 endif
 
-all : main
+all: main ex
 
-main : main.c $(commondir)GL_utilities.c $(commondir)VectorUtils3.c $(commondir)loadobj.c $(commondir)$(osdir)/MicroGlut$(glutext)
+main: main.c $(commondir)GL_utilities.c $(commondir)VectorUtils3.c $(commondir)loadobj.c $(commondir)$(osdir)/MicroGlut$(glutext)
 	gcc -Wall -o main -I$(commondir) -I$(commondir)$(osdir) -DGL_GLEXT_PROTOTYPES main.c $(commondir)GL_utilities.c $(commondir)loadobj.c $(commondir)VectorUtils3.c $(commondir)$(osdir)/MicroGlut$(glutext) $(glflags)
 
-clean :
-	rm main
+ex: example.c $(commondir)GL_utilities.c $(commondir)VectorUtils3.c $(commondir)loadobj.c $(commondir)$(osdir)/MicroGlut$(glutext)
+	gcc -Wall -o ex -I$(commondir) -I$(commondir)$(osdir) -DGL_GLEXT_PROTOTYPES example.c $(commondir)GL_utilities.c $(commondir)loadobj.c $(commondir)VectorUtils3.c $(commondir)$(osdir)/MicroGlut$(glutext) $(glflags)
+
+clean:
+	rm main ex

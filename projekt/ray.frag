@@ -5,6 +5,9 @@ out vec4 outColor;
 
 uniform float time;
 uniform vec3 cam_pos;
+uniform float ball_height;
+
+float WAVE_HEIGHT;
 
 float cube_dist(vec3 point, vec3 cube)
 {
@@ -14,28 +17,29 @@ float cube_dist(vec3 point, vec3 cube)
 
 float map_sphere(vec3 point, vec3 c, float r)
 {
-    // vec3 cube = vec3(0.5);
-    // vec3 d = abs(point)-cube;
-    // return min(max(d.x, max(d.y, d.z)), 0.0)+length(max(d, 0.0));
     return length(point-c)-r;
 }
 
-// Noise generation functions (by iq)
+// Noise generation functions (by Inigo Quilez):
+// https://www.shadertoy.com/view/4sS3zG
+// For more basics on noise:
 // https://thebookofshaders.com/10/
 float random(vec2 p)
 {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);
 }
 
+// VALUE noise implemented by Inigo Quilez
+// https://en.wikipedia.org/wiki/Value_noise
 float noise(in vec2 p)
 {
     vec2 int_coord = floor(p);
     vec2 fract_coord = fract(p);
-    // fract_coord = fract_coord*fract_coord*(3.0-2.0*fract_coord);
-    return 1.0+2.0*mix( mix( random( int_coord + vec2(0.0,0.0) ),
-                     random( int_coord + vec2(1.0,0.0) ), fract_coord.x),
+    vec2 u = fract_coord*fract_coord*(3.0-2.0*fract_coord); // Vad gör den här exakt? Någon sorts interpolator
+    return -1.0+2.0*mix( mix( random( int_coord + vec2(0.0,0.0) ),
+                     random( int_coord + vec2(1.0,0.0) ), u.x),
                 mix( random( int_coord + vec2(0.0,1.0) ),
-                     random( int_coord + vec2(1.0,1.0) ), fract_coord.x), fract_coord.y);
+                     random( int_coord + vec2(1.0,1.0) ), u.x), u.y);
 }
 
 
@@ -43,30 +47,33 @@ float wave_peak(vec2 p, float peak)
 {
     // peak should denote the "sharpness" of the wave crest
     p += noise(p);
-    vec2 wave = 1.0-abs(sin(p));
-    float q = pow(wave.x*wave.y,peak);
-    return q;
+    vec2 wave = 1.0-sin(p);
+    float no_p = pow(wave.x*wave.y,0.5);
+    float d = pow(1.0-no_p,peak);
+    return d;
 }
 
 float wave_dist(vec3 p, int level)
 {
     vec2 point = p.xz;
     float a = .6; // amplitude
-    float w = 0.2; // freq=2pi/wavelength. Has to be low -> large wavelength
-    float v = 0.9; // wave speed
-    float peak = .6;
+    float w = .2; // freq=2pi/wavelength. Has to be low -> large wavelength
+    float v = .8; // wave speed
+    float peak = 4.0;
 
-    float d, h = 0.0; // d = tot. dist, h = wave height
-    mat2 R = mat2(1,-1,1,1)*(sqrt(2)/2);
+    float h;
+    float d = 0.0; // d = tot. dist, h = wave height
+    const mat2 R = mat2(1.5,-1,1,1.5); //*(sqrt(2)/2);
     for(int i = 0; i < level; i++)
     {
         h = wave_peak((point+time*v)*w, peak);
-        h += wave_peak((point-time*v)*w, peak);
-        d = h*a;
+        h += wave_peak((point-(time-2)*v)*w, peak);
+        d += h*a;
 
         point *= R;
         w *= 2.0;
-        a *= 0.1;
+        a *= 0.3;
+        peak *= 0.8;
     }
     return p.y-d;
 }
@@ -78,9 +85,8 @@ float plane_dist(vec3 p, float h)
 
 float map(vec3 p)
 {
-    float water = wave_dist(p, 1);
-    // float water = map_water(p, 2);
-    float cube = cube_dist(p, vec3(3.0, 1.0, 3.0));
+    float water = wave_dist(p, 4);
+    float cube = cube_dist(p, vec3(3.0, 3.0, 3.0));
     return max(water,cube);
 }
 
@@ -162,7 +168,7 @@ float trace_ball(vec3 orig, vec3 dir, float start, float end, vec3 c, float r)
         if (dist<0.001) return d;
         d += dist;
     }
-    return 0.0;
+    return -1.0;
 }
 
 float trace_floor(vec3 orig, vec3 dir, float start, float end)
@@ -173,7 +179,7 @@ float trace_floor(vec3 orig, vec3 dir, float start, float end)
         if (dist<0.001) return d;
         d += dist;
     }
-    return 0.0;
+    return -1.0;
 }
 
 vec3 test_refr(vec3 inc_dir, vec3 n, float index)
@@ -187,7 +193,7 @@ vec3 test_refr(vec3 inc_dir, vec3 n, float index)
 
 vec3 test_refl(vec3 i_dir, vec3 n)
 {
-    float cosi = -dot(i_dir,n);
+    float cosi = dot(i_dir,n);
     return i_dir+2.0*cosi*n;
 }
 
@@ -213,7 +219,6 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     float specular, shade;
     vec3 total = vec3(0.0);
 
-    // vec3 refl, refr;
     vec3 refr = vec3(0.0);
     vec3 refl = vec3(0.0);
     float refractive_i = 1.33/1.00029;
@@ -222,14 +227,13 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     vec3 refl_dir = normalize(test_refl(inc_dir,n));
     vec3 refr_dir = normalize(test_refr(inc_dir,n,refractive_i));
 
-    // float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
-    float d = cast_ray(pos,refl_dir,c,r);
-    if(d!=-1.0) refl += shade_ball(pos+refl_dir*d,lpos,n,c,r,w_dir);
+    // float d = cast_ray(pos,refl_dir,c,r);
+    // float t = cast_ray(pos,refr_dir,c,r);
+    float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
+    float t = trace_ball(pos,refr_dir,0.0,length(pos-cam),c,r);
 
-    // float t = trace_ball(pos,refr_dir,0.0,10.0,c,r);
-    float t = cast_ray(pos,refr_dir,c,r);
-    if(t!=-1.0) refr += shade_ball(pos+refr_dir*t,lpos,n,c,r,w_dir);
-    // else if (t==-1.0) refr = vec3(1.0,0,0);
+    if (d!=-1.0) refl += shade_ball(pos+refl_dir*d,lpos,n,c,r,w_dir);
+    if (t!=-1.0) refr += shade_ball(pos+refr_dir*t,lpos,n,c,r,w_dir);
 
     // Diffuse
     vec3 ldir = normalize(pos-lpos);
@@ -237,13 +241,13 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
 
     // Specular
     // vec3 v = normalize(inc_dir); // View direction
-    vec3 r_spec = test_refl(ldir, n);
+    vec3 r_spec = reflect(ldir, n);
     specular = dot(r_spec, inc_dir);
     if (specular > 0.0)
         specular = 1.5 * pow(specular, 10.0);
     specular = max(specular, 0.0);
 
-    shade = 0.7*diff+1.0*specular;
+    shade = 0.7*diff+0.3*specular;
     float val = .0;
     // total += normalize(cam)*shade+refl; //*shade+refl;
     total += clr*shade+(val*refl)+((1.0-val)*refr);
@@ -256,22 +260,26 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
     vec3 light_pos = vec3(-15.0,-20.0,-0.0);
     vec3 color = vec3(0.0);
-    vec3 c = vec3(0,0.0,0);
-    float r = 0.5;
+    vec3 c = vec3(0,ball_height,0);
+    float r = 0.75;
     vec3 pos = vec3(0.0);
     float dmin = start;
     float dmax = 30.0;
     float d = dmin;
     for(int i=0; i<256; i++)
     {
+        bool sphere = false;
         pos = camera+dir*d;
         float dist = map(pos);
         float dist_s = map_sphere(pos,c,r);
-        if (dist > dist_s) dist = dist_s;
-        d += dist;
-        if(dist<0.0001 && d<dmax)
+        if (dist > dist_s) {
+            sphere=true;
+            d += dist_s;
+        } else {d += dist;}
+
+        if((dist<0.0001 || dist_s<0.0001) && d<dmax)
         {
-            if (dist == dist_s) {
+            if (sphere) {
                 vec3 normal = sphere_norm(pos,delta,c,r);
                 return shade_ball(pos,light_pos,normal,c,r,dir);
             }

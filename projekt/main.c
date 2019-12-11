@@ -49,6 +49,7 @@ float px = 0, py = 0;
 float dist = 3;
 GLfloat camera[] = {15.0,5.0,0.0};
 GLfloat camDist = 15.0;
+GLfloat ball_height = 0.0;
 
 void init(void)
 {
@@ -95,14 +96,34 @@ void mouseDragged(int x, int y)
     glutPostRedisplay();
 }
 
+float moveBall(float h)
+{
+    float change = 0.3;
+    if (glutKeyIsDown('w')) {
+        h += change;
+    }
+    if (glutKeyIsDown('s')) {
+        h -= change;
+    }
+    return h;
+}
+
+float dropBall()
+{
+    
+}
+
 void display(void)
 {
     // clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //Timer, mainly testing
+    ball_height = moveBall(ball_height);
     GLfloat time = 0.001*(GLfloat)glutGet(GLUT_ELAPSED_TIME);
-    glUniform1f(glGetUniformLocation(program, "time"), time);
+
     DrawModel(squareModel, program, "inPosition", NULL, NULL);
+    glUniform1f(glGetUniformLocation(program, "time"), time);
+    glUniform1f(glGetUniformLocation(program, "ball_height"), ball_height);
     glutSwapBuffers();
 }
 
