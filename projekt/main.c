@@ -50,6 +50,8 @@ float dist = 3;
 GLfloat camera[] = {15.0,5.0,0.0};
 GLfloat camDist = 15.0;
 GLfloat ball_height = 0.0;
+GLfloat drop_time;
+GLboolean gravity = GL_FALSE;
 
 void init(void)
 {
@@ -108,21 +110,36 @@ float moveBall(float h)
     return h;
 }
 
-float dropBall()
+void dropBall(float t)
 {
-    
+    if (glutKeyIsDown('e')) {
+        gravity = GL_FALSE;
+        // if (gravity == GL_TRUE) {
+        // }
+        // else gravity = GL_TRUE;
+    }
+    if (glutKeyIsDown('d')) {
+        drop_time = t;
+        gravity = GL_TRUE;
+    }
+    if (glutKeyIsDown('r')) {
+        ball_height = 0.0;
+    }
 }
 
 void display(void)
 {
     // clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    //Timer, mainly testing
-    ball_height = moveBall(ball_height);
+    //Timer, mainly for testing
     GLfloat time = 0.001*(GLfloat)glutGet(GLUT_ELAPSED_TIME);
+    ball_height = moveBall(ball_height);
+    dropBall(time);
 
     DrawModel(squareModel, program, "inPosition", NULL, NULL);
     glUniform1f(glGetUniformLocation(program, "time"), time);
+    glUniform1f(glGetUniformLocation(program, "drop_time"), drop_time);
+    glUniform1i(glGetUniformLocation(program, "gravity"), gravity);
     glUniform1f(glGetUniformLocation(program, "ball_height"), ball_height);
     glutSwapBuffers();
 }

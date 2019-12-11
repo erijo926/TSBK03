@@ -6,6 +6,8 @@ out vec4 outColor;
 uniform float time;
 uniform vec3 cam_pos;
 uniform float ball_height;
+uniform float drop_time;
+uniform bool gravity;
 
 float WAVE_HEIGHT;
 
@@ -254,18 +256,27 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     return total;
 }
 
+float drop_ball(float h)
+{
+    float acc = 0.982;
+    float curr_time = time-drop_time;
+    float v = acc*curr_time;
+    return h-v;
+}
+
 //Perform the ray marching:
-vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
+vec3 ray_march(vec3 camera, vec3 dir, float start, float dmax, float delta)
 {
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
     vec3 light_pos = vec3(-15.0,-20.0,-0.0);
     vec3 color = vec3(0.0);
-    vec3 c = vec3(0,ball_height,0);
-    float r = 0.75;
     vec3 pos = vec3(0.0);
-    float dmin = start;
-    float dmax = 30.0;
-    float d = dmin;
+    vec3 c = vec3(0.0);
+    if (gravity == false) c.y = ball_height;
+    if (gravity == true) c.y = drop_ball(ball_height);
+
+    float r = 1.0;
+    float d = start;
     for(int i=0; i<256; i++)
     {
         bool sphere = false;
@@ -295,7 +306,7 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float end, float delta)
 void main()
 {
     const float min_dist = 0.001;
-    const float max_dist = 100;
+    const float max_dist = 30.0;
     const float delta = 0.01; //Checks distance from current pos to object
 
     // vec3 cam_pos = vec3(5*sin(time),3,5*cos(time));
