@@ -49,7 +49,7 @@ float px = 0, py = 0;
 float dist = 3;
 GLfloat camera[] = {15.0,5.0,0.0};
 GLfloat camDist = 15.0;
-GLfloat ball_height = 0.0;
+GLfloat ball_height = 0.5;
 GLfloat drop_time;
 GLboolean gravity = GL_FALSE;
 

@@ -9,7 +9,7 @@ uniform float ball_height;
 uniform float drop_time;
 uniform bool gravity;
 
-float WAVE_HEIGHT;
+float BALL_SPEED = 0.0;
 
 float cube_dist(vec3 point, vec3 cube)
 {
@@ -80,6 +80,14 @@ float wave_dist(vec3 p, int level)
     return p.y-d;
 }
 
+float circ_wave(vec3 p, vec3 c)
+{
+    float temp_t = time-drop_time;
+    vec3 r = -1*(p-c)/length(p-c);
+    float freq = 1/temp_t;
+    return 0.5*sin(dot(r,p)*freq+temp_t);
+}
+
 float plane_dist(vec3 p, float h)
 {
     return p.y-h;
@@ -89,7 +97,16 @@ float map(vec3 p)
 {
     float water = wave_dist(p, 4);
     float cube = cube_dist(p, vec3(3.0, 3.0, 3.0));
-    return max(water,cube);
+    return water;
+    // return max(water,cube);
+}
+
+float map_impact(vec3 p)
+{
+    vec3 c = vec3(0.0);
+    float water = wave_dist(p, 2);
+    float wave = circ_wave(p,c);
+    return (p.y-wave)+water;
 }
 
 vec3 sphere_norm(vec3 p, float d, vec3 c, float r)
@@ -226,8 +243,8 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     float refractive_i = 1.33/1.00029;
     vec3 clr = normalize(vec3(63.0,127.0,191.0));
     vec3 inc_dir = normalize(pos-cam);
-    vec3 refl_dir = normalize(test_refl(inc_dir,n));
-    vec3 refr_dir = normalize(test_refr(inc_dir,n,refractive_i));
+    vec3 refl_dir = (test_refl(inc_dir,n));
+    vec3 refr_dir = (test_refr(inc_dir,n,refractive_i));
 
     // float d = cast_ray(pos,refl_dir,c,r);
     // float t = cast_ray(pos,refr_dir,c,r);
@@ -250,17 +267,21 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     specular = max(specular, 0.0);
 
     shade = 0.7*diff+0.3*specular;
-    float val = .0;
+    float val = 1.0;
     // total += normalize(cam)*shade+refl; //*shade+refl;
     total += clr*shade+(val*refl)+((1.0-val)*refr);
     return total;
 }
 
-float drop_ball(float h)
+float ball_speed(float v)
 {
     float acc = 0.982;
     float curr_time = time-drop_time;
-    float v = acc*curr_time;
+    return v+=acc*curr_time;
+}
+
+float drop_ball(float h, float v)
+{
     return h-v;
 }
 
@@ -268,12 +289,19 @@ float drop_ball(float h)
 vec3 ray_march(vec3 camera, vec3 dir, float start, float dmax, float delta)
 {
     // vec3 light_pos = vec3(-10*sin(time),-15.0,-10*cos(time));
-    vec3 light_pos = vec3(-15.0,-20.0,-0.0);
+    vec3 light_pos = vec3(-20.0,-20.0,-0.0);
     vec3 color = vec3(0.0);
     vec3 pos = vec3(0.0);
     vec3 c = vec3(0.0);
-    if (gravity == false) c.y = ball_height;
-    if (gravity == true) c.y = drop_ball(ball_height);
+    if (gravity == false)
+    {
+        c.y = ball_height;
+    }
+    if (gravity == true)
+    {
+        BALL_SPEED = ball_speed(BALL_SPEED);
+        c.y -= BALL_SPEED;
+    }
 
     float r = 1.0;
     float d = start;
@@ -281,12 +309,17 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float dmax, float delta)
     {
         bool sphere = false;
         pos = camera+dir*d;
+        // float dist = 0.0;
+        // // if ((gravity == true) && ((c.y-r) < 0.0))
+        // //     dist = map_impact(pos);
+        // // else dist =  map(pos);
         float dist = map(pos);
         float dist_s = map_sphere(pos,c,r);
         if (dist > dist_s) {
             sphere=true;
             d += dist_s;
         } else {d += dist;}
+
 
         if((dist<0.0001 || dist_s<0.0001) && d<dmax)
         {
