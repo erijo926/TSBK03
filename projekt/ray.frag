@@ -37,7 +37,7 @@ float noise(in vec2 p)
 {
     vec2 int_coord = floor(p);
     vec2 fract_coord = fract(p);
-    vec2 u = fract_coord*fract_coord*(3.0-2.0*fract_coord); // Vad gör den här exakt? Någon sorts interpolator
+    vec2 u = fract_coord*fract_coord*(3.0-2.0*fract_coord);
     return -1.0+2.0*mix( mix( random( int_coord + vec2(0.0,0.0) ),
                      random( int_coord + vec2(1.0,0.0) ), u.x),
                 mix( random( int_coord + vec2(0.0,1.0) ),
@@ -69,7 +69,7 @@ float wave_dist(vec3 p, int level)
     for(int i = 0; i < level; i++)
     {
         h = wave_peak((point+time*v)*w, peak);
-        h += wave_peak((point-(time-2)*v)*w, peak);
+        h += wave_peak((point-(time)*v)*w, peak);
         d += h*a;
 
         point *= R;
@@ -98,7 +98,6 @@ float map(vec3 p)
     float water = wave_dist(p, 4);
     float cube = cube_dist(p, vec3(3.0, 3.0, 3.0));
     return water;
-    // return max(water,cube);
 }
 
 float map_impact(vec3 p)
@@ -190,17 +189,6 @@ float trace_ball(vec3 orig, vec3 dir, float start, float end, vec3 c, float r)
     return -1.0;
 }
 
-float trace_floor(vec3 orig, vec3 dir, float start, float end)
-{
-    for (float d=start; d<end;)
-    {
-        float dist = plane_dist(orig+dir*d,-1.0);
-        if (dist<0.001) return d;
-        d += dist;
-    }
-    return -1.0;
-}
-
 vec3 test_refr(vec3 inc_dir, vec3 n, float index)
 {
     float ind = 1.00029/1.33;
@@ -246,8 +234,6 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     vec3 refl_dir = (test_refl(inc_dir,n));
     vec3 refr_dir = (test_refr(inc_dir,n,refractive_i));
 
-    // float d = cast_ray(pos,refl_dir,c,r);
-    // float t = cast_ray(pos,refr_dir,c,r);
     float d = trace_ball(pos,refl_dir,0.0,length(pos-cam),c,r);
     float t = trace_ball(pos,refr_dir,0.0,length(pos-cam),c,r);
 
@@ -258,17 +244,14 @@ vec3 shade_water(vec3 pos, vec3 cam, vec3 lpos, vec3 n, vec3 c, float r, vec3 w_
     vec3 ldir = normalize(pos-lpos);
     float diff = dot(n,ldir);
 
-    // Specular
-    // vec3 v = normalize(inc_dir); // View direction
     vec3 r_spec = reflect(ldir, n);
     specular = dot(r_spec, inc_dir);
     if (specular > 0.0)
         specular = 1.5 * pow(specular, 10.0);
     specular = max(specular, 0.0);
 
-    shade = 0.7*diff+0.3*specular;
+    shade = 0.7*diff+0.4*specular;
     float val = 1.0;
-    // total += normalize(cam)*shade+refl; //*shade+refl;
     total += clr*shade+(val*refl)+((1.0-val)*refr);
     return total;
 }
@@ -309,10 +292,6 @@ vec3 ray_march(vec3 camera, vec3 dir, float start, float dmax, float delta)
     {
         bool sphere = false;
         pos = camera+dir*d;
-        // float dist = 0.0;
-        // // if ((gravity == true) && ((c.y-r) < 0.0))
-        // //     dist = map_impact(pos);
-        // // else dist =  map(pos);
         float dist = map(pos);
         float dist_s = map_sphere(pos,c,r);
         if (dist > dist_s) {
