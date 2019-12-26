@@ -44,7 +44,6 @@ float noise(in vec2 p)
                      random( int_coord + vec2(1.0,1.0) ), u.x), u.y);
 }
 
-
 float wave_peak(vec2 p, float peak)
 {
     // peak should denote the "sharpness" of the wave crest
@@ -97,7 +96,7 @@ float map(vec3 p)
 {
     float water = wave_dist(p, 4);
     float cube = cube_dist(p, vec3(3.0, 3.0, 3.0));
-    return water;
+    return max(cube, water);
 }
 
 float map_impact(vec3 p)
@@ -121,8 +120,8 @@ vec3 water_norm(vec3 p, float d)
 {
     // return vec3(0,1,0);
     return normalize(vec3(
-        map(vec3(p.x, p.y+d, p.z)) - map(vec3(p.x, p.y-d, p.z)),
         map(vec3(p.x+d, p.y, p.z)) - map(vec3(p.x-d, p.y, p.z)),
+        map(vec3(p.x, p.y+d, p.z)) - map(vec3(p.x, p.y-d, p.z)),
         map(vec3(p.x, p.y, p.z+d)) - map(vec3(p.x, p.y, p.z-d))
     ));
 }
